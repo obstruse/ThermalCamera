@@ -243,3 +243,6 @@ while(running):
 	
 	pygame.display.update()
 
+cam.stop()
+pygame.quit()
+GPIO.cleanup()
