@@ -12,6 +12,7 @@ if os.geteuid() == 0:
 	os.putenv('SDL_VIDEODRIVER','fbcon')
 	os.putenv('SDL_MOUSEDRV', 'TSLIB')
 	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+	pygame.mouse.set_visible(False)
 
 pygame.init()
 pygame.camera.init()
@@ -24,17 +25,17 @@ cam.start()
 
 image = cam.get_image()
 
-going = True
-while going:
+running = True
+while running:
 	events = pygame.event.get()
 	for e in events:
 		if (e.type is MOUSEBUTTONDOWN):
 #			cam.stop()
-			going = False
+			running = False
 
 		if e.type == QUIT or (e.type == KEYDOWN and e.key == K_ESCAPE):
 #			cam.stop()
-			going = False
+			running = False
 
 	if cam.query_image():
 		image = cam.get_image()
