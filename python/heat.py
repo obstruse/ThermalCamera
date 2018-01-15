@@ -23,7 +23,7 @@ buttonAction = {1:1,     2:-1,    3:1,     4:-1}
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-ScreenCapture = 4
+ScreenCapture = 5
 GPIO.setup(ScreenCapture, GPIO.OUT)
 GPIO.output(ScreenCapture, False)
 
@@ -41,14 +41,18 @@ MAXTEMP = (79 - 32) / 1.8
 #how many color values we can have
 COLORDEPTH = 1024
 
-#os.putenv('SDL_FBDEV', '/dev/fb1')
-#os.putenv('SDL_VIDEODRIVER', 'fbcon')
-#os.putenv('SDL_MOUSEDRV', 'TSLIB')
-#os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
-#pygame.mouse.set_visible(False)
+# if user is root, then output to fb1
+if os.geteuid() == 0:
+	os.putenv('SDL_FBDEV', '/dev/fb1')
+	os.putenv('SDL_VIDEODRIVER', 'fbcon')
+	os.putenv('SDL_MOUSEDRV', 'TSLIB')
+	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
 
 pygame.init()
 pygame.camera.init()
+
+if os.geteuid() == 0:
+	pygame.mouse.set_visible(False)
 
 #initialize the sensor
 sensor = Adafruit_AMG88xx()
@@ -135,8 +139,8 @@ MINtextPos = MINtext.get_rect(center=(290,140))
 touchState = False
 fileNum = 0
 	
-going = True
-while(going):
+running = True
+while(running):
         # scan the buttons
         for k in buttonMap.keys():
             bState = GPIO.input(buttonMap[k])
@@ -165,7 +169,7 @@ while(going):
 				if menuBack.collidepoint(pos):
 					menuDisplay = False
 				if menuExit.collidepoint(pos):
-					going = False
+					running = False
 
 				if menuHeat.collidepoint(pos):
 					heatDisplay+=1
@@ -179,14 +183,14 @@ while(going):
 
 		if (event.type == KEYUP) :
 			if (event.key == K_ESCAPE) :
-				going = False
+				running = False
 
 	if heatDisplay :
 		#read the pixels
 		pixels = sensor.readPixels()
 		pixels = [map(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in pixels]
 		
-		#perdorm interpolation
+		#perform interpolation
 		bicubic = griddata(points, pixels, (grid_x, grid_y), method='cubic')
 		
 		#draw everything
