@@ -15,20 +15,15 @@ from colour import Color
 
 import RPi.GPIO as GPIO
 
-buttonMap =    {1:17,    2:22,    3:23,    4:27}
-buttonState =  {1:True,  2:True,  3:True,  4:True}
-buttonParam =  {1:'Max', 2:'Max', 3:'Min', 4:'Min'}
-buttonAction = {1:1,     2:-1,    3:1,     4:-1}
-
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-ScreenCapture = 5
-GPIO.setup(ScreenCapture, GPIO.OUT)
-GPIO.output(ScreenCapture, False)
+screenCapture = 5
+GPIO.setup(screenCapture, GPIO.OUT)
+GPIO.output(screenCapture, False)
 
-for v in buttonMap.values():
-    GPIO.setup(v, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+streamCapture = 17
+GPIO.setup(streamCapture, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 #low range of the sensor (this will be blue on the screen)
 #MINTEMP = 26
@@ -95,7 +90,12 @@ menuDisplay = False
 heatDisplay = 1
 videoDisplay = True
 
-imageRecord = False
+imageCapture = False
+
+def frameCapture() :
+	fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+	fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
+	pygame.image.save(lcd, fileName)
 
 def menuButton( menuText, menuCenter, menuSize ) :
 	mbSurf = font.render(menuText,True,WHITE)
@@ -113,7 +113,7 @@ menuMaxMinus = menuButton('-',(230,90),(60,60) )
 menuMinPlus = menuButton('+',(230,150),(60,60) )
 menuMinMinus = menuButton('-',(230,210),(60,60) )
 
-menuRecord = menuButton('Record',(60,30),(120,60) )
+menuCapture = menuButton('Capture',(60,30),(120,60) )
 menuHeat = menuButton('Heat',(60,90),(120,60) )
 
 menuBack = menuButton('Back',(60,150),(120,60) )
@@ -141,16 +141,6 @@ fileNum = 0
 	
 running = True
 while(running):
-        # scan the buttons
-        for k in buttonMap.keys():
-            bState = GPIO.input(buttonMap[k])
-            if bState != buttonState[k]:
-                buttonState[k] = bState
-                if bState == False:
-                    if buttonParam[k] == 'Max' :
-                        MAXTEMP += buttonAction[k]
-                    else:
-                        MINTEMP += buttonAction[k]
 
 	# scan events
 	for event in pygame.event.get():
@@ -175,8 +165,8 @@ while(running):
 					heatDisplay+=1
 					if heatDisplay > 3 :
 						heatDisplay = 0
-				if menuRecord.collidepoint(pos):
-					imageRecord = not imageRecord
+				if menuCapture.collidepoint(pos):
+					imageCapture = not imageRecord
 
 			else :
 				menuDisplay = True
@@ -228,27 +218,28 @@ while(running):
 		camImage = cam.get_image()
 		lcd.blit(camImage,(0,0))
 
-	if imageRecord :
-		imageRecord = False
-		fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-		fileName = "/home/pi/record/heat%s.jpg" % fileDate
-		pygame.image.save(lcd, fileName)
+	# capture single frame, without menu overlay
+	if imageCapture :
+		imageCapture = False
+		frameCapture()
+
+	# stream capture, without menu overlay
+	# keep capturing frames as long as top right button is pressed
+	if not GPIO.input(streamCapture):
+		frameCapture()
 
 	# menu
 	if menuDisplay :
 		lcd.blit(menu,(0,0))
 
-	# screen capture
-	# similar to imageRecord, but invoked by GPIO(although not necessarily by a button), and shows the menu overlay
-	if GPIO.input(ScreenCapture) :
-                GPIO.output(ScreenCapture,False)
-                fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                fileName = "/home/pi/record/heat%s.jpg" % fileDate
-                pygame.image.save(lcd, fileName)
+	# remote screen capture
+	# similar to imageCapture, but invoked by GPIO, includes the menu overlay
+	# for example:  from a shell window, enter:  gpio -g 5 1
+	#    to capture the current display
+	if GPIO.input(screenCapture) :
+                GPIO.output(screenCapture,False)
+		frameCapture()
 
 	
 	pygame.display.update()
 
-	#fileNum = fileNum + 1
-	#fileName = "heat%04d.jpg" % fileNum
-	#pygame.image.save(lcd, fileName)
