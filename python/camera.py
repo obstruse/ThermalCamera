@@ -46,5 +46,4 @@ while running:
 
 cam.stop()
 pygame.quit()
-GPIO.cleanup()
 
