@@ -10,10 +10,10 @@ echo ...update package lists
 apt-get -qq update
 
 echo ...build-essential, git
-apt-get -qq --show-progress install -y build-essential git
+apt-get -qq install -y build-essential git
 
 echo ...python packages
-apt-get -qq --show-progress install -y python-pip python-dev python-smbus python-scipy python-pygame
+apt-get -qq install -y python-pip python-dev python-smbus python-scipy python-pygame
 
 echo ' '
 echo Install AMG88xx...
@@ -60,7 +60,7 @@ echo ...update package lists
 apt-get -qq update
 
 echo ...install libSDL
-apt-get -qq --show-progress -y --force-yes install libsdl1.2debian/wheezy
+apt-get -qq -y --force-yes install libsdl1.2debian/wheezy
 
 echo ' '
 echo Install complete
