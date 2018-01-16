@@ -18,12 +18,9 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-screenCapture = 5
-GPIO.setup(screenCapture, GPIO.OUT)
-GPIO.output(screenCapture, False)
-
-streamCapture = 17
-GPIO.setup(streamCapture, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+streamCapture = 5
+GPIO.setup(streamCapture, GPIO.OUT)
+GPIO.output(streamCapture, False)
 
 #low range of the sensor (this will be blue on the screen)
 #MINTEMP = 26
@@ -92,11 +89,6 @@ videoDisplay = True
 
 imageCapture = False
 
-def frameCapture() :
-	fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-	fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
-	pygame.image.save(lcd, fileName)
-
 def menuButton( menuText, menuCenter, menuSize ) :
 	mbSurf = font.render(menuText,True,WHITE)
 	mbRect = mbSurf.get_rect(center=menuCenter)
@@ -136,8 +128,9 @@ MAXtextPos = MAXtext.get_rect(center=(290,20))
 MINtext = font.render('MIN', True, WHITE)
 MINtextPos = MINtext.get_rect(center=(290,140))
 
-touchState = False
+# for streamCapture
 fileNum = 0
+fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
 	
 running = True
 while(running):
@@ -221,25 +214,23 @@ while(running):
 	# capture single frame, without menu overlay
 	if imageCapture :
 		imageCapture = False
-		frameCapture()
-
-	# stream capture, without menu overlay
-	# keep capturing frames as long as top right button is pressed
-	if not GPIO.input(streamCapture):
-		frameCapture()
+		fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+		fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
+		pygame.image.save(lcd, fileName)
 
 	# menu
 	if menuDisplay :
 		lcd.blit(menu,(0,0))
 
-	# remote screen capture
+	# remote stream capture
 	# similar to imageCapture, but invoked by GPIO, includes the menu overlay
-	# for example:  from a shell window, enter:  gpio -g 5 1
-	#    to capture the current display
-	if GPIO.input(screenCapture) :
-                GPIO.output(screenCapture,False)
-		frameCapture()
-
+	# capture continues until stopped
+	# for example,from a shell window: start capture:  gpio -g 5 1
+	#                                  stop capture:   gpio -g 5 0
+	if GPIO.input(streamCapture) :
+		fileNum = fileNum + 1
+		fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
+		pygame.image.save(lcd, fileName)
 	
 	pygame.display.update()
 
