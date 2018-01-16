@@ -44,3 +44,7 @@ while running:
 	lcd.blit(image, (0,0))
 	pygame.display.flip()
 
+cam.stop()
+pygame.quit()
+GPIO.cleanup()
+
