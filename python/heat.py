@@ -18,22 +18,16 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
+# streamCapture
 streamCapture = 5
 GPIO.setup(streamCapture, GPIO.OUT)
 GPIO.output(streamCapture, False)
+fileNum = 0
+fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
 
-#low range of the sensor (this will be blue on the screen)
-#MINTEMP = 26
-MINTEMP = (73 - 32) / 1.8
 
-#high range of the sensor (this will be red on the screen)
-#MAXTEMP = 32
-MAXTEMP = (79 - 32) / 1.8
-
-#how many color values we can have
-COLORDEPTH = 1024
-
-# if user is root, then output to fb1
+# initialize python
+# if user is root, output to fb1
 if os.geteuid() == 0:
 	os.putenv('SDL_FBDEV', '/dev/fb1')
 	os.putenv('SDL_VIDEODRIVER', 'fbcon')
@@ -41,23 +35,26 @@ if os.geteuid() == 0:
 	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
 
 pygame.init()
-pygame.camera.init()
 
 if os.geteuid() == 0:
 	pygame.mouse.set_visible(False)
 
-#initialize the sensor
+font = pygame.font.Font(None, 30)
+height = 240
+width = 320
+
+
+#initialize the sensor and environment
 sensor = Adafruit_AMG88xx()
+
+#how many color values we can have
+COLORDEPTH = 1024
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
-font = pygame.font.Font(None, 30)
 
 points = [(math.floor(ix / 8), (ix % 8)) for ix in range(0, 64)]
 grid_x, grid_y = np.mgrid[0:7:32j, 0:7:32j]
-
-height = 240
-width = 320
 
 #the list of colors we can choose from
 blue = Color("indigo")
@@ -70,24 +67,41 @@ colors = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in col
 displayPixelWidth = 11
 displayPixelHeight = height / 30
 displayPixelHeight = height / 30
-print displayPixelWidth, displayPixelHeight
 
-lcd = pygame.display.set_mode((width,height))
+# initial low range of the sensor (this will be blue on the screen)
+#MINTEMP = 26
+MINTEMP = (73 - 32) / 1.8
 
+# initial high range of the sensor (this will be red on the screen)
+#MAXTEMP = 32
+MAXTEMP = (79 - 32) / 1.8
+
+
+# initialize camera
+pygame.camera.init()
 cam = pygame.camera.Camera("/dev/video0",(width, height))
 cam.start()
 
+
+# create surfaces
+# display surface
+lcd = pygame.display.set_mode((width,height))
+
+# edge detect surface
 overlay = pygame.surface.Surface((width, height))
 overlay.set_colorkey((0,0,0))
 
+# menu surface
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
-menuDisplay = False 
 
-heatDisplay = 1
-videoDisplay = True
 
-imageCapture = False
+#utility functions
+def constrain(val, min_val, max_val):
+    return min(max_val, max(min_val, val))
+
+def map(x, in_min, in_max, out_min, out_max):
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
 def menuButton( menuText, menuCenter, menuSize ) :
 	mbSurf = font.render(menuText,True,WHITE)
@@ -100,6 +114,7 @@ def menuButton( menuText, menuCenter, menuSize ) :
 
 	return mbRect
 
+# menu buttons and text
 menuMaxPlus = menuButton('+',(230,30),(60,60) )
 menuMaxMinus = menuButton('-',(230,90),(60,60) )
 menuMinPlus = menuButton('+',(230,150),(60,60) )
@@ -111,27 +126,22 @@ menuHeat = menuButton('Heat',(60,90),(120,60) )
 menuBack = menuButton('Back',(60,150),(120,60) )
 menuExit = menuButton('Exit',(60,210),(120,60) )
 
-
-#some utility functions
-def constrain(val, min_val, max_val):
-    return min(max_val, max(min_val, val))
-
-def map(x, in_min, in_max, out_min, out_max):
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
-#let the sensor initialize
-time.sleep(.1)
-
 MAXtext = font.render('MAX', True, WHITE)
 MAXtextPos = MAXtext.get_rect(center=(290,20))
 
 MINtext = font.render('MIN', True, WHITE)
 MINtextPos = MINtext.get_rect(center=(290,140))
 
-# for streamCapture
-fileNum = 0
-fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
+
+# flags
+menuDisplay = False 
+heatDisplay = 1
+imageCapture = False
+
+#let the sensor initialize
+time.sleep(.1)
 	
+
 running = True
 while(running):
 
@@ -211,19 +221,15 @@ while(running):
 		camImage = cam.get_image()
 		lcd.blit(camImage,(0,0))
 
-	# capture single frame, without menu overlay
+	# capture single frame to file, without menu overlay
 	if imageCapture :
 		imageCapture = False
 		fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
 		fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
 		pygame.image.save(lcd, fileName)
 
-	# menu
-	if menuDisplay :
-		lcd.blit(menu,(0,0))
-
 	# remote stream capture
-	# similar to imageCapture, but invoked by GPIO, includes the menu overlay
+	# similar to imageCapture, but invoked by GPIO
 	# capture continues until stopped
 	# for example,from a shell window: start capture:  gpio -g 5 1
 	#                                  stop capture:   gpio -g 5 0
@@ -232,7 +238,13 @@ while(running):
 		fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
 		pygame.image.save(lcd, fileName)
 	
+        # add menu overlay
+        if menuDisplay :
+                lcd.blit(menu,(0,0))
+
+	# display
 	pygame.display.update()
+
 
 cam.stop()
 pygame.quit()
