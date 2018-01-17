@@ -12,10 +12,8 @@ Optional:
 
 ## Wiring
 The Thermal Camera connects using I2C:
-
 ![Wiring](/Images/wiring.png)
 
 ## Mounting
 Mount the Thermal Camera next to the USB Camera:
-
 ![Mounting](Images/mount.jpg)
