@@ -11,4 +11,11 @@ Optional:
 - Adafruit PiTFT Plus 320x240 2.8" TFT + Capacitive Touchscreen (https://www.adafruit.com/product/2423)
 
 ## Wiring
+The Thermal Camera connects using I2C:
+
 ![Wiring](Images/wiring.png)
+
+## Mounting
+Mount the Thermal Camera next to the USB Camera:
+
+![Mounting](Images/mount.jpg)
