@@ -16,4 +16,6 @@ The Thermal Camera connects using I2C:
 
 ## Mounting
 Mount the Thermal Camera next to the USB Camera:
+
 ![Mounting](Images/mount.jpg)
+![Mounting](https://github.com/obstruse/ThermalCamera/raw/master/Images/mount.jpg)
