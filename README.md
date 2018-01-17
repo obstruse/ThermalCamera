@@ -11,3 +11,4 @@ Optional:
 - Adafruit PiTFT Plus 320x240 2.8" TFT + Capacitive Touchscreen (https://www.adafruit.com/product/2423)
 
 ## Wiring
+![Wiring](Images/wiring.png)
