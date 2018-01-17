@@ -8,7 +8,7 @@ exit
 # backup current settings
 
 # clear top menu panel
-cat <<! >~/.config/lxpanel/LXDR-pi/panels/panel
+cat <<! >~/.config/lxpanel/LXDE-pi/panels/panel
 # lxpanel <profile> config file. Manually editing is not recommended.
 # Use preference dialog in lxpanel to adjust config when you can.
 
@@ -107,7 +107,7 @@ Plugin {
 !
 
 # remove trashcan icon
-cat <<! >~/.config/pcmanfm/LXDR-pi/desktop-items-0.conf
+cat <<! >~/.config/pcmanfm/LXDE-pi/desktop-items-0.conf
 [*]
 wallpaper_mode=crop
 wallpaper_common=1
