@@ -2,7 +2,7 @@
 Name=camera
 Comment=USB camera
 Icon=/usr/share/pixmaps/supercollider.xpm
-Exec=sudo /home/pi/ThermalCamera/python/camera.py
+Exec=sudo -E /home/pi/ThermalCamera/python/camera.py
 Type=Application
 Encoding=UTF-8
 Terminal=false
