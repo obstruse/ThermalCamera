@@ -22,4 +22,7 @@ Mount the Thermal Camera next to the USB Camera:
 
 ## Install Software
 
-wget https://github.com/obstruse/ThermalCamera/archive/master.zip
+```
+git clone https://github.com/obstruse/ThermalCamera.git
+sudo ThermalCamera/install/installThermalCamera.sh
+```
