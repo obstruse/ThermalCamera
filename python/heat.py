@@ -41,6 +41,9 @@ except:
         os.unsetenv('SDL_VIDEODRIVER')
         os.unsetenv('SDL_MOUSEDRV')
         os.unsetenv('SDL_MOUSEDEV')
+	pygame.display.init()
+	pygame.display.set_caption('ThermalCamera')
+
 
 pygame.init()
 
