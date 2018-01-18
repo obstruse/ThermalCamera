@@ -42,13 +42,14 @@ echo ...force version
 echo "deb http://archive.raspbian.org/raspbian wheezy main
 " > /etc/apt/sources.list.d/wheezy.list
 
+release=$(lsb_release -cs)
 #set stable as default package source (currently jessie)
-echo "APT::Default-release \"jessie\";
+echo "APT::Default-release \"$release\";
 " > /etc/apt/apt.conf.d/10defaultRelease
 
 #set the priority for libsdl from wheezy higher then the jessie package
 echo "Package: libsdl1.2debian
-Pin: release n=jessie
+Pin: release n=$release
 Pin-Priority: -10
 Package: libsdl1.2debian
 Pin: release n=wheezy

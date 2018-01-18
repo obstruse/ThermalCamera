@@ -6,19 +6,25 @@ from pygame.locals import *
 import os
 from PIL import Image
 
-
-# if user is root, then output to fb1
-if os.geteuid() == 0:
+# initialize display
+try:
 	os.putenv('SDL_FBDEV', '/dev/fb1')
 	os.putenv('SDL_VIDEODRIVER','fbcon')
 	os.putenv('SDL_MOUSEDRV', 'TSLIB')
 	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+	pygame.display.init()
+	pygame.mouse.set_visible(False)
+
+except:
+	pygame.quit()
+	os.unsetenv('SDL_FBDEV')
+	os.unsetenv('SDL_VIDEODRIVER')
+	os.unsetenv('SDL_MOUSEDRV')
+	os.unsetenv('SDL_MOUSEDEV')
 
 pygame.init()
-pygame.camera.init()
 
-if os.geteuid() == 0:
-	pygame.mouse.set_visible(False)
+pygame.camera.init()
 
 lcd = pygame.display.set_mode((320, 240))
 
