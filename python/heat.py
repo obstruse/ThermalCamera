@@ -26,18 +26,26 @@ fileNum = 0
 fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
 
 
-# initialize python
-# if user is root, output to fb1
-if os.geteuid() == 0:
+# initialize display environment
+try:
 	os.putenv('SDL_FBDEV', '/dev/fb1')
 	os.putenv('SDL_VIDEODRIVER', 'fbcon')
 	os.putenv('SDL_MOUSEDRV', 'TSLIB')
 	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+        pygame.display.init()
+        pygame.mouse.set_visible(False)
+
+except:
+        pygame.quit()
+        os.unsetenv('SDL_FBDEV')
+        os.unsetenv('SDL_VIDEODRIVER')
+        os.unsetenv('SDL_MOUSEDRV')
+        os.unsetenv('SDL_MOUSEDEV')
+	pygame.display.init()
+	pygame.display.set_caption('ThermalCamera')
+
 
 pygame.init()
-
-if os.geteuid() == 0:
-	pygame.mouse.set_visible(False)
 
 font = pygame.font.Font(None, 30)
 height = 240
