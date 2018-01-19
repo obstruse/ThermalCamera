@@ -32,6 +32,7 @@ try:
 	os.putenv('SDL_VIDEODRIVER', 'fbcon')
 	os.putenv('SDL_MOUSEDRV', 'TSLIB')
 	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+        os.putenv('SDL_AUDIODRIVER', 'dummy')
         pygame.display.init()
         pygame.mouse.set_visible(False)
 
@@ -177,7 +178,7 @@ while(running):
 					if heatDisplay > 3 :
 						heatDisplay = 0
 				if menuCapture.collidepoint(pos):
-					imageCapture = not imageRecord
+					imageCapture = not imageCapture
 
 			else :
 				menuDisplay = True
