@@ -4,6 +4,12 @@
 set -e
 
 echo ' '
+echo Install Desktop Icons...
+projDir=$(dirname $(dirname $(readlink -f $0)))
+userDir=$(eval echo ~$SUDO_USER)
+cp $projDir/Desktop/*.desktop $userDir/Desktop
+
+echo ' '
 echo Install packages...
 
 echo ...update package lists
