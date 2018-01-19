@@ -10,19 +10,20 @@ Thermal Camera with Video Overlay for Raspberry Pi
 Optional:
 - Adafruit PiTFT Plus 320x240 2.8" TFT + Capacitive Touchscreen (https://www.adafruit.com/product/2423)
 
-## Wiring
+### Wiring
 The Thermal Camera connects using I2C:
 
 ![Wiring](/Images/wiring.png)
 
-## Mounting
+### Mounting
 Mount the Thermal Camera next to the USB Camera:
 
 ![Mounting](Images/mount.jpg)
 
-## Install Software
+## Software
 
 ```
 git clone https://github.com/obstruse/ThermalCamera.git
 sudo ThermalCamera/install/installThermalCamera.sh
 ```
+## Touchscreen
