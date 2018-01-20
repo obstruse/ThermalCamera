@@ -73,8 +73,7 @@ colors = list(blue.range_to(Color("red"), COLORDEPTH))
 colors = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 #displayPixelWidth = width / 30
-displayPixelWidth = 11
-displayPixelHeight = height / 30
+displayPixelWidth = 10
 displayPixelHeight = height / 30
 
 # initial low range of the sensor (this will be blue on the screen)
@@ -213,7 +212,7 @@ while(running):
 		#draw everything
 		for ix, row in enumerate(bicubic):
 			for jx, pixel in enumerate(row):
-				rect = (displayPixelWidth * (30 - ix), displayPixelHeight * jx, displayPixelWidth, displayPixelHeight)
+				rect = (displayPixelWidth * (31 - ix), displayPixelHeight * jx, displayPixelWidth, displayPixelHeight)
 				color = colors[constrain(int(pixel), 0, COLORDEPTH- 1)]
 				lcd.fill(color, rect)
 		# add camera
