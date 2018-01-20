@@ -161,12 +161,24 @@ while(running):
 				pos = pygame.mouse.get_pos()
 				if menuMaxPlus.collidepoint(pos):
 					MAXTEMP+=1
+					if MAXTEMP > 80 :
+						MAXTEMP = 80
 				if menuMaxMinus.collidepoint(pos):
 					MAXTEMP-=1
+					if MAXTEMP < 1 :
+						MAXTEMP = 1
+					if MAXTEMP <= MINTEMP :
+						MINTEMP = MAXTEMP - 1
 				if menuMinPlus.collidepoint(pos):
 					MINTEMP+=1
+					if MINTEMP > 79 :
+						MINTEMP = 79
+					if MINTEMP >= MAXTEMP :
+						MAXTEMP = MINTEMP + 1
 				if menuMinMinus.collidepoint(pos):
 					MINTEMP-=1
+					if MINTEMP < 0 :
+						MINTEMP = 0
 
 				if menuBack.collidepoint(pos):
 					menuDisplay = False
