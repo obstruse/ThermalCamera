@@ -76,9 +76,8 @@ colors = list(blue.range_to(Color("red"), COLORDEPTH))
 #create the array of colors
 colors = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
-#displayPixelWidth = width / 30
-displayPixelWidth = 10
-displayPixelHeight = height / 30
+displayPixelWidth = math.ceil(width / 32.)
+displayPixelHeight = math.ceil(height / 32.)
 
 # initial low range of the sensor (this will be blue on the screen)
 #MINTEMP = 26
@@ -223,9 +222,11 @@ while(running):
 		# add camera
 		if heatDisplay == 2 :
 			camImage = pygame.transform.laplacian(pygame.transform.scale(cam.get_image(),(int(width*imageScale),int(height*imageScale))))
+			camRect = camImage.get_rect(center=lcdRect.center)
 			pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
+			overlayRect = overlay.get_rect(center=lcdRect.center)
 			overlay.set_colorkey((0,0,0))
-			lcd.blit(overlay,(0,0))
+			lcd.blit(overlay,camRect)
 
 		if heatDisplay == 1 :
 			camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
@@ -247,7 +248,7 @@ while(running):
 		lcd.blit(text,textPos)
 
 	else:
-		camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+		camImage = cam.get_image()
 		lcd.blit(camImage,(0,0))
 
 	# capture single frame to file, without menu overlay
