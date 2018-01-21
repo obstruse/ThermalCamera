@@ -25,6 +25,10 @@ GPIO.output(streamCapture, False)
 fileNum = 0
 fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
 
+# camera Field Of View
+camFOV = 30
+heatFOV = 40
+imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 # initialize display environment
 try:
@@ -94,6 +98,7 @@ cam.start()
 # create surfaces
 # display surface
 lcd = pygame.display.set_mode((width,height))
+lcdRect = lcd.get_rect()
 
 # edge detect surface
 overlay = pygame.surface.Surface((width, height))
@@ -217,15 +222,16 @@ while(running):
 				lcd.fill(color, rect)
 		# add camera
 		if heatDisplay == 2 :
-			camImage = pygame.transform.laplacian(cam.get_image())
+			camImage = pygame.transform.laplacian(pygame.transform.scale(cam.get_image(),(int(width*imageScale),int(height*imageScale))))
 			pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
 			overlay.set_colorkey((0,0,0))
 			lcd.blit(overlay,(0,0))
 
 		if heatDisplay == 1 :
-			camImage = cam.get_image()
+			camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+			camRect = camImage.get_rect(center=lcdRect.center)
 			camImage.set_alpha(100)
-			lcd.blit(camImage,(0,0))
+			lcd.blit(camImage,camRect)
 
 		# display max/min
 		lcd.blit(MAXtext,MAXtextPos)
@@ -241,7 +247,7 @@ while(running):
 		lcd.blit(text,textPos)
 
 	else:
-		camImage = cam.get_image()
+		camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
 		lcd.blit(camImage,(0,0))
 
 	# capture single frame to file, without menu overlay
