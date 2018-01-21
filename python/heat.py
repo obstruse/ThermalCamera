@@ -99,6 +99,9 @@ cam.start()
 lcd = pygame.display.set_mode((width,height))
 lcdRect = lcd.get_rect()
 
+# heat surface
+heat = pygame.surface.Surface((width, height))
+
 # edge detect surface
 overlay = pygame.surface.Surface((width, height))
 overlay.set_colorkey((0,0,0))
@@ -213,15 +216,28 @@ while(running):
 		#perform interpolation
 		bicubic = griddata(points, pixels, (grid_x, grid_y), method='cubic')
 		
-		#draw everything
+		# create heat layer
 		for ix, row in enumerate(bicubic):
 			for jx, pixel in enumerate(row):
 				rect = (displayPixelWidth * (31 - ix), displayPixelHeight * jx, displayPixelWidth, displayPixelHeight)
 				color = colors[constrain(int(pixel), 0, COLORDEPTH- 1)]
-				lcd.fill(color, rect)
+				heat.fill(color, rect)
+
+		if imageScale < 1.0 :
+			heatImage = pygame.transform.scale(heat, (int(width/imageScale),int(height/imageScale)))
+		else:
+			heatImage = heat
+
+		heatRect = heatImage.get_rect(center=lcdRect.center)
+		lcd.blit(heatImage,heatRect)
+
 		# add camera
 		if heatDisplay == 2 :
-			camImage = pygame.transform.laplacian(pygame.transform.scale(cam.get_image(),(int(width*imageScale),int(height*imageScale))))
+			if imageScale > 1.0 :
+				camImage = pygame.transform.laplacian(pygame.transform.scale(cam.get_image(),(int(width*imageScale),int(height*imageScale))))
+			else:
+				camImage = pygame.transform.laplacian(cam.get_image())
+
 			camRect = camImage.get_rect(center=lcdRect.center)
 			pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
 			overlayRect = overlay.get_rect(center=lcdRect.center)
@@ -229,7 +245,11 @@ while(running):
 			lcd.blit(overlay,camRect)
 
 		if heatDisplay == 1 :
-			camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+			if imageScale > 1.0 :
+				camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+			else:
+				camImage = cam.get_image()
+
 			camRect = camImage.get_rect(center=lcdRect.center)
 			camImage.set_alpha(100)
 			lcd.blit(camImage,camRect)
