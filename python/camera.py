@@ -7,10 +7,10 @@ import os
 from PIL import Image
 import math
 
-camFOV = 30
+camFOV = 40
 heatFOV = 40
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-print imageScale
+#print imageScale
 
 # initialize display
 try:
