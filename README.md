@@ -20,6 +20,8 @@ Mount the Thermal Camera next to the USB Camera:
 
 ![Mounting](Images/mount.jpg)
 
+https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0
+
 ## Software
 
 ```
