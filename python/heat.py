@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+#----------------------------------------------
+# Enter camera Field Of View here (in degrees):
+camFOV = 30
+#----------------------------------------------
+
 from Adafruit_AMG88xx import Adafruit_AMG88xx
 import pygame
 import pygame.camera
@@ -18,17 +23,6 @@ import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-# streamCapture
-streamCapture = 5
-GPIO.setup(streamCapture, GPIO.OUT)
-GPIO.output(streamCapture, False)
-fileNum = 0
-fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
-
-# camera Field Of View
-camFOV = 30
-heatFOV = 40
-imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 # initialize display environment
 try:
@@ -151,15 +145,26 @@ MINtext = font.render('MIN', True, WHITE)
 MINtextPos = MINtext.get_rect(center=(290,140))
 
 
+# streamCapture
+streamCapture = 5
+GPIO.setup(streamCapture, GPIO.OUT)
+GPIO.output(streamCapture, False)
+fileNum = 0
+fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
+
 # flags
 menuDisplay = False 
 heatDisplay = 1
 imageCapture = False
 
+# Field of View and Scale
+heatFOV = 40
+imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+
 #let the sensor initialize
 time.sleep(.1)
 	
-
+# loop...
 running = True
 while(running):
 
@@ -209,11 +214,11 @@ while(running):
 				running = False
 
 	if heatDisplay :
-		#read the pixels
+		# read the pixels
 		pixels = sensor.readPixels()
 		pixels = [map(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in pixels]
 		
-		#perform interpolation
+		# perform interpolation
 		bicubic = griddata(points, pixels, (grid_x, grid_y), method='cubic')
 		
 		# create heat layer
