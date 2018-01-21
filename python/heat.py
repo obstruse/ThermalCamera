@@ -233,16 +233,16 @@ while(running):
 
 		# add camera
 		if heatDisplay == 2 :
-			if imageScale > 1.0 :
-				camImage = pygame.transform.laplacian(pygame.transform.scale(cam.get_image(),(int(width*imageScale),int(height*imageScale))))
-			else:
-				camImage = pygame.transform.laplacian(cam.get_image())
-
-			camRect = camImage.get_rect(center=lcdRect.center)
+			camImage = pygame.transform.laplacian(cam.get_image())
 			pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-			overlayRect = overlay.get_rect(center=lcdRect.center)
-			overlay.set_colorkey((0,0,0))
-			lcd.blit(overlay,camRect)
+			if imageScale > 1.0 :
+				overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
+			else:
+				overlay2 = overlay
+
+			overlay2Rect = overlay2.get_rect(center=lcdRect.center)
+			overlay2.set_colorkey((0,0,0))
+			lcd.blit(overlay2,overlay2Rect)
 
 		if heatDisplay == 1 :
 			if imageScale > 1.0 :
