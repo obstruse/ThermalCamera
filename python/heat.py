@@ -136,7 +136,7 @@ menuMinPlus = menuButton('+',(230,150),(60,60) )
 menuMinMinus = menuButton('-',(230,210),(60,60) )
 
 menuCapture = menuButton('Capture',(60,30),(120,60) )
-menuHeat = menuButton('Heat',(60,90),(120,60) )
+menuMode = menuButton('Mode',(60,90),(120,60) )
 
 menuBack = menuButton('Back',(60,150),(120,60) )
 menuExit = menuButton('Exit',(60,210),(120,60) )
@@ -191,7 +191,7 @@ while(running):
 				if menuExit.collidepoint(pos):
 					running = False
 
-				if menuHeat.collidepoint(pos):
+				if menuMode.collidepoint(pos):
 					heatDisplay+=1
 					if heatDisplay > 3 :
 						heatDisplay = 0
