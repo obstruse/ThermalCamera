@@ -18,9 +18,9 @@ The Thermal Camera connects using I2C:
 ### Mounting
 Mount the Thermal Camera next to the USB Camera:
 
-![Mounting](Images/IMG_0788-3.jpg)
-![Bare USB Camera](Images/IMG_0789-3.jpg)
-![Camera](Images/IMG_0791-3.jpg)
+![Mounting](Images/IMG_0788-3.JPG)
+![Bare USB Camera](Images/IMG_0789-3.JPG)
+![Camera](Images/IMG_0791-3.JPG)
 
 https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0
 
