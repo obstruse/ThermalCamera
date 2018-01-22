@@ -4,7 +4,7 @@ Thermal Camera with Video Overlay for Raspberry Pi
 ## Hardware
 - Raspberry Pi 3 (https://www.adafruit.com/product/3055)
 - Adafruit AMG8833 IR Thermal Camera Breakout (https://www.adafruit.com/product/3538)
-- USB Camera
+- USB Camera (see below)
 - Power supply, 5V 2.4A (https://www.adafruit.com/product/1995)
 
 Optional:
@@ -15,14 +15,19 @@ The Thermal Camera connects using I2C:
 
 ![Wiring](/Images/wiring.png)
 
-### Mounting
-Mount the Thermal Camera next to the USB Camera:
+### USB Camera
+Just about any USB camera can be used.  Most webcams however, aren't designed for easy mounting.  For example, the Creative HD 720p:
 
 ![Mounting](Images/IMG_0788-3.JPG)
+
+The "Bare USB Webcam" from Public Lab ( https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0) works better: 
+
 ![Bare USB Camera](Images/IMG_0789-3.JPG)
+
+...and the complete assembly fits on the back of the PiTFT Pibow (https://www.adafruit.com/product/2779):
+
 ![Camera](Images/IMG_0791-3.JPG)
 
-https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0
 
 ## Software
 
@@ -30,4 +35,7 @@ https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0
 git clone https://github.com/obstruse/ThermalCamera.git
 sudo ThermalCamera/install/installThermalCamera.sh
 ```
+
+### Calibration
+
 ## Touchscreen
