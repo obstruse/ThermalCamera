@@ -27,7 +27,7 @@ fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
 
 # camera Field Of View
 camFOV = 30
-heatFOV = 40
+heatFOV = 45
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 # initialize display environment
@@ -209,6 +209,11 @@ while(running):
 				running = False
 
 	if heatDisplay :
+		# heatDisplay == 0	camera only
+		# heatDisplay == 1	heat + camera
+		# heatDisplay == 2	heat + edge
+		# heatDisplay == 3	heat only
+
 		#read the pixels
 		pixels = sensor.readPixels()
 		pixels = [map(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in pixels]
@@ -223,7 +228,7 @@ while(running):
 				color = colors[constrain(int(pixel), 0, COLORDEPTH- 1)]
 				heat.fill(color, rect)
 
-		if imageScale < 1.0 :
+		if imageScale < 1.0 and heatDisplay != 3:
 			heatImage = pygame.transform.scale(heat, (int(width/imageScale),int(height/imageScale)))
 		else:
 			heatImage = heat
