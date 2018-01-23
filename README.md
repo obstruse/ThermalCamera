@@ -96,3 +96,20 @@ For the capacitive touch 2.8" touchscreen, burn the "Easy Install" 'classic Jess
 https://s3.amazonaws.com/adafruit-raspberry-pi/2016-10-18-pitft-28c.zip
 
 This is pre-configured with the touchscreen drivers required (ft6x06_ts) to work with pygame and SDL1.2
+
+When this image boots, the PiTFT Desktop will look like this:
+
+![Desktop](Images/screen7.png)
+
+Unfortunately, the screen is too small to run the Preferences/Raspberry Pi Configuration; the icons at the top overlap so it's difficult to click on the WiFi icon to enable WiFi. Without WiFi you can't SSH to the Pi to install the program.
+
+One solution is to mount the SD on your Desktop computer and copy the miniDesk script to /home/pi/Desktop:
+
+https://raw.githubusercontent.com/obstruse/ThermalCamera/master/install/miniDesk
+
+When the Pi boots, there will be a miniDesk icon on the Desktop.  Click it, logout and login, and you will have the simplified Desktop menus:
+
+![Desktop](Images/screen1.png)
+
+'Single-click' is also enabled: no need to double-click to execute an icon. Click the WiFi icon to enable and configure WiFi
+
