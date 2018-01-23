@@ -95,6 +95,10 @@ For the capacitive touch 2.8" touchscreen, burn the "Easy Install" 'classic Jess
 
 https://s3.amazonaws.com/adafruit-raspberry-pi/2016-10-18-pitft-28c.zip
 
+For the resistive touchscreen (not tested), use:
+
+https://s3.amazonaws.com/adafruit-raspberry-pi/2016-10-18-pitft-28r.zip
+
 This is pre-configured with the touchscreen drivers required (ft6x06_ts) to work with pygame and SDL1.2
 
 When this image boots, the PiTFT Desktop will look like this:
