@@ -111,5 +111,7 @@ When the Pi boots, there will be a miniDesk icon on the Desktop.  Click it, logo
 
 ![Desktop](Images/screen1.png)
 
-'Single-click' is also enabled: no need to double-click to execute an icon. Click the WiFi icon to enable and configure WiFi
+'Single-click' is also enabled: no need to double-click to execute an icon. Click the WiFi icon to enable and configure WiFi.
+
+When ThermalCamera is installed, there will be a 'Heat' icon on the PiTFT Desktop.  Touch that to run the program
 
