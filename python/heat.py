@@ -2,7 +2,7 @@
 
 #----------------------------------------------
 # Enter camera Field Of View here (in degrees):
-camFOV = 30
+camFOV = 35
 #----------------------------------------------
 
 from Adafruit_AMG88xx import Adafruit_AMG88xx
@@ -158,7 +158,7 @@ heatDisplay = 1
 imageCapture = False
 
 # Field of View and Scale
-heatFOV = 40
+heatFOV = 55
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 #let the sensor initialize
