@@ -5,12 +5,6 @@ import pygame.camera
 from pygame.locals import *
 import os
 from PIL import Image
-import math
-
-camFOV = 40
-heatFOV = 40
-imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-#print imageScale
 
 # initialize display
 try:
@@ -39,14 +33,9 @@ height = 240
 width = 320
 
 lcd = pygame.display.set_mode((width,height))
-lcdRect = lcd.get_rect()
 
 cam = pygame.camera.Camera("/dev/video0",(width,height))
 cam.start()
-
-
-#image = cam.get_image()
-#image = pygame.surface.Surface((width,height))
 
 running = True
 while running:
@@ -59,10 +48,8 @@ while running:
 			running = False
 
 	if cam.query_image():
-		image = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
-		image_rect = image.get_rect(center=lcdRect.center)
-
-		lcd.blit(image, image_rect)
+		image = cam.get_image()
+		lcd.blit(image, (0,0))
 		pygame.display.flip()
 
 cam.stop()
