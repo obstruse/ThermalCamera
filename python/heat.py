@@ -5,7 +5,8 @@
 camFOV = 35
 #----------------------------------------------
 
-from Adafruit_AMG88xx import Adafruit_AMG88xx
+import adafruit_mlx90640
+
 import pygame
 import pygame.camera
 from pygame.locals import *
@@ -14,11 +15,16 @@ import math
 import time
 
 import numpy as np
-from scipy.interpolate import griddata
 
 from colour import Color
 
+import board
+import busio
+
 import RPi.GPIO as GPIO
+
+# MUST set I2C freq to 1MHz in /boot/config.txt
+i2c = busio.I2C(board.SCL, board.SDA)
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
@@ -50,36 +56,16 @@ font = pygame.font.Font(None, 30)
 height = 240
 width = 320
 
-
-#initialize the sensor and environment
-sensor = Adafruit_AMG88xx()
-
-#how many color values we can have
-COLORDEPTH = 1024
-
-WHITE = (255,255,255)
-BLACK = (0,0,0)
-
-points = [(math.floor(ix / 8), (ix % 8)) for ix in range(0, 64)]
-grid_x, grid_y = np.mgrid[0:7:32j, 0:7:32j]
-
-#the list of colors we can choose from
-blue = Color("indigo")
-colors = list(blue.range_to(Color("red"), COLORDEPTH))
-
-#create the array of colors
-colors = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-displayPixelWidth = math.ceil(width / 32.)
-displayPixelHeight = math.ceil(height / 32.)
+# initialize the sensor
+mlx = adafruit_mlx90640.MLX90640(i2c)
+print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
+mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
 
 # initial low range of the sensor (this will be blue on the screen)
-#MINTEMP = 26
-MINTEMP = (73 - 32) / 1.8
+MINTEMP = (68 - 32) / 1.8
 
 # initial high range of the sensor (this will be red on the screen)
-#MAXTEMP = 32
-MAXTEMP = (79 - 32) / 1.8
+MAXTEMP = (100 - 32) / 1.8
 
 
 # initialize camera
@@ -115,6 +101,36 @@ def map(x, in_min, in_max, out_min, out_max):
   x = constrain(x, in_min, in_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
+def map_pixel(x, in_min, in_max, out_min, out_max):
+    #if x > 80 :
+    #    x = 0
+    #x = constrain(x, in_min, in_max)
+    cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    return colormap[constrain(int(cindex), 0, COLORDEPTH - 1) ]
+    #return colors[constrain(int(cindex), 0, COLORDEPTH - 1) ]
+    #return colors[int(cindex)]
+
+
+def gaussian(x, a, b, c, d=0):
+    return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
+
+
+def gradient(x, width, cmap, spread=1):
+    width = float(width)
+    r = sum(
+        [gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+    )
+    g = sum(
+        [gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+    )
+    b = sum(
+        [gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+    )
+    r = int(constrain(r * 255, 0, 255))
+    g = int(constrain(g * 255, 0, 255))
+    b = int(constrain(b * 255, 0, 255))
+    return r, g, b
+
 def menuButton( menuText, menuCenter, menuSize ) :
 	mbSurf = font.render(menuText,True,WHITE)
 	mbRect = mbSurf.get_rect(center=menuCenter)
@@ -143,6 +159,36 @@ MAXtextPos = MAXtext.get_rect(center=(290,20))
 
 MINtext = font.render('MIN', True, WHITE)
 MINtextPos = MINtext.get_rect(center=(290,140))
+
+#how many color values we can have
+COLORDEPTH = 1024
+colormap = [0] * COLORDEPTH
+
+# method 1
+# ... gradient
+# ... how this works??
+# the list of colors we can choose from
+heatmap = (
+    (0.0, (0, 0, 0)),
+    (0.20, (0, 0, 0.5)),
+    (0.40, (0, 0.5, 0)),
+    (0.60, (0.5, 0, 0)),
+    (0.80, (0.75, 0.75, 0)),
+    (0.90, (1.0, 0.75, 0)),
+    (1.00, (1.0, 1.0, 1.0)),
+)
+colormap = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
+
+# method 2
+# ... range_to (color)
+blue = Color("indigo")
+colors = list(blue.range_to(Color("red"), COLORDEPTH))
+#colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
+##colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+
 
 
 # streamCapture
@@ -219,24 +265,22 @@ while(running):
 		# heatDisplay == 2	heat + edge
 		# heatDisplay == 3	heat only
 
-		# read the pixels
-		pixels = sensor.readPixels()
-		pixels = [map(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in pixels]
-		
-		# perform interpolation
-		bicubic = griddata(points, pixels, (grid_x, grid_y), method='cubic')
-		
-		# create heat layer
-		for ix, row in enumerate(bicubic):
-			for jx, pixel in enumerate(row):
-				rect = (displayPixelWidth * (31 - ix), displayPixelHeight * jx, displayPixelWidth, displayPixelHeight)
-				color = colors[constrain(int(pixel), 0, COLORDEPTH- 1)]
-				heat.fill(color, rect)
+                # read temperatures from sensor
+                try:
+                    mlx.getFrame(temps)
+                except ValueError:
+                    continue  # these happen, no biggie - retry
 
+		# map temperatures and create pixels
+                pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
+
+		# create heat surface from pixels
+                heat = pygame.surfarray.make_surface(np.flip(pixels,0))
+                # scale up if necessary to match camera
 		if imageScale < 1.0 and heatDisplay != 3:
-			heatImage = pygame.transform.scale(heat, (int(width/imageScale),int(height/imageScale)))
-		else:
-			heatImage = heat
+                        heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
+                else:
+                        heatImage = pygame.transform.smoothscale(heat, (width,height))
 
 		heatRect = heatImage.get_rect(center=lcdRect.center)
 		lcd.blit(heatImage,heatRect)
