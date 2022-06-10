@@ -56,6 +56,9 @@ font = pygame.font.Font(None, 30)
 height = 240
 width = 320
 
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+
 # initialize the sensor
 mlx = adafruit_mlx90640.MLX90640(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
@@ -186,9 +189,6 @@ colors = list(blue.range_to(Color("red"), COLORDEPTH))
 #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
 ##colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
-WHITE = (255,255,255)
-BLACK = (0,0,0)
-
 
 
 # streamCapture
@@ -197,6 +197,8 @@ GPIO.setup(streamCapture, GPIO.OUT)
 GPIO.output(streamCapture, False)
 fileNum = 0
 fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
+
+temps = [0] * 768
 
 # flags
 menuDisplay = False 
