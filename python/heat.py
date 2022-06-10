@@ -32,10 +32,10 @@ GPIO.setwarnings(False)
 
 # initialize display environment
 try:
-	os.putenv('SDL_FBDEV', '/dev/fb1')
-	os.putenv('SDL_VIDEODRIVER', 'fbcon')
-	os.putenv('SDL_MOUSEDRV', 'TSLIB')
-	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+        os.putenv('SDL_FBDEV', '/dev/fb1')
+        os.putenv('SDL_VIDEODRIVER', 'fbcon')
+        os.putenv('SDL_MOUSEDRV', 'TSLIB')
+        os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
         os.putenv('SDL_AUDIODRIVER', 'dummy')
         pygame.display.init()
         pygame.mouse.set_visible(False)
@@ -46,8 +46,8 @@ except:
         os.unsetenv('SDL_VIDEODRIVER')
         os.unsetenv('SDL_MOUSEDRV')
         os.unsetenv('SDL_MOUSEDEV')
-	pygame.display.init()
-	pygame.display.set_caption('ThermalCamera')
+        pygame.display.init()
+        pygame.display.set_caption('ThermalCamera')
 
 
 pygame.init()
@@ -132,15 +132,15 @@ def gradient(x, width, cmap, spread=1):
     return r, g, b
 
 def menuButton( menuText, menuCenter, menuSize ) :
-	mbSurf = font.render(menuText,True,WHITE)
-	mbRect = mbSurf.get_rect(center=menuCenter)
-	menu.blit(mbSurf,mbRect)
+        mbSurf = font.render(menuText,True,WHITE)
+        mbRect = mbSurf.get_rect(center=menuCenter)
+        menu.blit(mbSurf,mbRect)
 
-	mbRect.size = menuSize
-	mbRect.center = menuCenter
-	pygame.draw.rect(menu,WHITE,mbRect,3)
+        mbRect.size = menuSize
+        mbRect.center = menuCenter
+        pygame.draw.rect(menu,WHITE,mbRect,3)
 
-	return mbRect
+        return mbRect
 
 # menu buttons and text
 menuMaxPlus = menuButton('+',(230,30),(60,60) )
@@ -209,61 +209,61 @@ imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.)
 
 #let the sensor initialize
 time.sleep(.1)
-	
+        
 # loop...
 running = True
 while(running):
 
-	# scan events
-	for event in pygame.event.get():
-		if (event.type is MOUSEBUTTONUP):
-			if menuDisplay :
-				pos = pygame.mouse.get_pos()
-				if menuMaxPlus.collidepoint(pos):
-					MAXTEMP+=1
-					if MAXTEMP > 80 :
-						MAXTEMP = 80
-				if menuMaxMinus.collidepoint(pos):
-					MAXTEMP-=1
-					if MAXTEMP < 1 :
-						MAXTEMP = 1
-					if MAXTEMP <= MINTEMP :
-						MINTEMP = MAXTEMP - 1
-				if menuMinPlus.collidepoint(pos):
-					MINTEMP+=1
-					if MINTEMP > 79 :
-						MINTEMP = 79
-					if MINTEMP >= MAXTEMP :
-						MAXTEMP = MINTEMP + 1
-				if menuMinMinus.collidepoint(pos):
-					MINTEMP-=1
-					if MINTEMP < 0 :
-						MINTEMP = 0
+        # scan events
+        for event in pygame.event.get():
+                if (event.type is MOUSEBUTTONUP):
+                        if menuDisplay :
+                                pos = pygame.mouse.get_pos()
+                                if menuMaxPlus.collidepoint(pos):
+                                        MAXTEMP+=1
+                                        if MAXTEMP > 80 :
+                                                MAXTEMP = 80
+                                if menuMaxMinus.collidepoint(pos):
+                                        MAXTEMP-=1
+                                        if MAXTEMP < 1 :
+                                                MAXTEMP = 1
+                                        if MAXTEMP <= MINTEMP :
+                                                MINTEMP = MAXTEMP - 1
+                                if menuMinPlus.collidepoint(pos):
+                                        MINTEMP+=1
+                                        if MINTEMP > 79 :
+                                                MINTEMP = 79
+                                        if MINTEMP >= MAXTEMP :
+                                                MAXTEMP = MINTEMP + 1
+                                if menuMinMinus.collidepoint(pos):
+                                        MINTEMP-=1
+                                        if MINTEMP < 0 :
+                                                MINTEMP = 0
 
-				if menuBack.collidepoint(pos):
-					menuDisplay = False
-				if menuExit.collidepoint(pos):
-					running = False
+                                if menuBack.collidepoint(pos):
+                                        menuDisplay = False
+                                if menuExit.collidepoint(pos):
+                                        running = False
 
-				if menuMode.collidepoint(pos):
-					heatDisplay+=1
-					if heatDisplay > 3 :
-						heatDisplay = 0
-				if menuCapture.collidepoint(pos):
-					imageCapture = not imageCapture
+                                if menuMode.collidepoint(pos):
+                                        heatDisplay+=1
+                                        if heatDisplay > 3 :
+                                                heatDisplay = 0
+                                if menuCapture.collidepoint(pos):
+                                        imageCapture = not imageCapture
 
-			else :
-				menuDisplay = True
+                        else :
+                                menuDisplay = True
 
-		if (event.type == KEYUP) :
-			if (event.key == K_ESCAPE) :
-				running = False
+                if (event.type == KEYUP) :
+                        if (event.key == K_ESCAPE) :
+                                running = False
 
-	if heatDisplay :
-		# heatDisplay == 0	camera only
-		# heatDisplay == 1	heat + camera
-		# heatDisplay == 2	heat + edge
-		# heatDisplay == 3	heat only
+        if heatDisplay :
+                # heatDisplay == 0      camera only
+                # heatDisplay == 1      heat + camera
+                # heatDisplay == 2      heat + edge
+                # heatDisplay == 3      heat only
 
                 # read temperatures from sensor
                 try:
@@ -271,83 +271,83 @@ while(running):
                 except ValueError:
                     continue  # these happen, no biggie - retry
 
-		# map temperatures and create pixels
+                # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
 
-		# create heat surface from pixels
+                # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
                 # scale up if necessary to match camera
-		if imageScale < 1.0 and heatDisplay != 3:
+                if imageScale < 1.0 and heatDisplay != 3:
                         heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
                 else:
                         heatImage = pygame.transform.smoothscale(heat, (width,height))
 
-		heatRect = heatImage.get_rect(center=lcdRect.center)
-		lcd.blit(heatImage,heatRect)
+                heatRect = heatImage.get_rect(center=lcdRect.center)
+                lcd.blit(heatImage,heatRect)
 
-		# add camera
-		if heatDisplay == 2 :
-			camImage = pygame.transform.laplacian(cam.get_image())
-			pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-			if imageScale > 1.0 :
-				overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
-			else:
-				overlay2 = overlay
+                # add camera
+                if heatDisplay == 2 :
+                        camImage = pygame.transform.laplacian(cam.get_image())
+                        pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
+                        if imageScale > 1.0 :
+                                overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
+                        else:
+                                overlay2 = overlay
 
-			overlay2Rect = overlay2.get_rect(center=lcdRect.center)
-			overlay2.set_colorkey((0,0,0))
-			lcd.blit(overlay2,overlay2Rect)
+                        overlay2Rect = overlay2.get_rect(center=lcdRect.center)
+                        overlay2.set_colorkey((0,0,0))
+                        lcd.blit(overlay2,overlay2Rect)
 
-		if heatDisplay == 1 :
-			if imageScale > 1.0 :
-				camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
-			else:
-				camImage = cam.get_image()
+                if heatDisplay == 1 :
+                        if imageScale > 1.0 :
+                                camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+                        else:
+                                camImage = cam.get_image()
 
-			camRect = camImage.get_rect(center=lcdRect.center)
-			camImage.set_alpha(100)
-			lcd.blit(camImage,camRect)
+                        camRect = camImage.get_rect(center=lcdRect.center)
+                        camImage.set_alpha(100)
+                        lcd.blit(camImage,camRect)
 
-		# display max/min
-		lcd.blit(MAXtext,MAXtextPos)
-		fahrenheit = MAXTEMP*1.8 + 32
-		text = font.render('%d'%fahrenheit, True, WHITE)
-		textPos = text.get_rect(center=(290,60))
-		lcd.blit(text,textPos)
+                # display max/min
+                lcd.blit(MAXtext,MAXtextPos)
+                fahrenheit = MAXTEMP*1.8 + 32
+                text = font.render('%d'%fahrenheit, True, WHITE)
+                textPos = text.get_rect(center=(290,60))
+                lcd.blit(text,textPos)
 
-		lcd.blit(MINtext,MINtextPos)
-		fahrenheit = MINTEMP*1.8 + 32
-		text = font.render('%d'%fahrenheit, True, WHITE)
-		textPos = text.get_rect(center=(290,180))
-		lcd.blit(text,textPos)
+                lcd.blit(MINtext,MINtextPos)
+                fahrenheit = MINTEMP*1.8 + 32
+                text = font.render('%d'%fahrenheit, True, WHITE)
+                textPos = text.get_rect(center=(290,180))
+                lcd.blit(text,textPos)
 
-	else:
-		camImage = cam.get_image()
-		lcd.blit(camImage,(0,0))
+        else:
+                camImage = cam.get_image()
+                lcd.blit(camImage,(0,0))
 
-	# capture single frame to file, without menu overlay
-	if imageCapture :
-		imageCapture = False
-		fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-		fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
-		pygame.image.save(lcd, fileName)
+        # capture single frame to file, without menu overlay
+        if imageCapture :
+                imageCapture = False
+                fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
+                pygame.image.save(lcd, fileName)
 
-	# remote stream capture
-	# similar to imageCapture, but invoked by GPIO
-	# capture continues until stopped
-	# for example,from a shell window: start capture:  gpio -g 5 1
-	#                                  stop capture:   gpio -g 5 0
-	if GPIO.input(streamCapture) :
-		fileNum = fileNum + 1
-		fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
-		pygame.image.save(lcd, fileName)
-	
+        # remote stream capture
+        # similar to imageCapture, but invoked by GPIO
+        # capture continues until stopped
+        # for example,from a shell window: start capture:  gpio -g 5 1
+        #                                  stop capture:   gpio -g 5 0
+        if GPIO.input(streamCapture) :
+                fileNum = fileNum + 1
+                fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
+                pygame.image.save(lcd, fileName)
+        
         # add menu overlay
         if menuDisplay :
                 lcd.blit(menu,(0,0))
 
-	# display
-	pygame.display.update()
+        # display
+        pygame.display.update()
 
 
 cam.stop()
