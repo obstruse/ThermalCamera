@@ -290,6 +290,7 @@ while(running):
                 # add camera
                 if heatDisplay == 2 :
                         camImage = pygame.transform.laplacian(cam.get_image())
+                        overlay.fill((0,0,0))
                         pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
                         if imageScale > 1.0 :
                                 overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
