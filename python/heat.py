@@ -56,6 +56,10 @@ font = pygame.font.Font(None, 30)
 height = 240
 width = 320
 
+# should read these from config file... hmm, as well as FOV, height,width.
+offsetX = 0
+offsetY = 0
+
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
@@ -206,7 +210,7 @@ heatDisplay = 1
 imageCapture = False
 
 # Field of View and Scale
-heatFOV = 55
+heatFOV = 40
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 #let the sensor initialize
@@ -261,6 +265,17 @@ while(running):
                         if (event.key == K_ESCAPE) :
                                 running = False
 
+                        if (event.key == K_RIGHT) :
+                                offsetX += 1
+                        if (event.key == K_LEFT) :
+                                offsetX -= 1
+
+                        if (event.key == K_DOWN) :
+                                offsetY += 1
+                        if (event.key == K_UP) :
+                                offsetY -= 1
+
+
         if heatDisplay :
                 # heatDisplay == 0      camera only
                 # heatDisplay == 1      heat + camera
@@ -281,10 +296,12 @@ while(running):
                 # scale up if necessary to match camera
                 if imageScale < 1.0 and heatDisplay != 3:
                         heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
+                        heatRect = heatImage.get_rect(center=lcdRect.center)
+                        pygame.Rect.move_ip(heatRect,offsetX,offsetY)
                 else:
                         heatImage = pygame.transform.smoothscale(heat, (width,height))
+                        heatRect = heatImage.get_rect(center=lcdRect.center)
 
-                heatRect = heatImage.get_rect(center=lcdRect.center)
                 lcd.blit(heatImage,heatRect)
 
                 # add camera
