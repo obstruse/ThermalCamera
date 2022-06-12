@@ -56,10 +56,6 @@ font = pygame.font.Font(None, 30)
 height = 240
 width = 320
 
-# should read these from config file... hmm, as well as FOV, height,width.
-offsetX = 0
-offsetY = 0
-
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
@@ -189,9 +185,9 @@ colormap = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
 # method 2
 # ... range_to (color)
 blue = Color("indigo")
-colors = list(blue.range_to(Color("red"), COLORDEPTH))
+#colors = list(blue.range_to(Color("red"), COLORDEPTH))
 #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-##colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+#colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 
 
@@ -212,6 +208,23 @@ imageCapture = False
 # Field of View and Scale
 heatFOV = 40
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+
+# should read these from a config file... hmm, as well as FOV, height,width.
+offsetX = 0
+offsetY = 0
+
+# heat margins after scaling. Only used for wide heat images (imageScale < 1).
+# keep scaled heat image within display boundaries after offsets applied; offset cam image if necessary
+marginX = 0
+marginY = 0
+if ( imageScale < 1 ) :
+   marginX = (width/imageScale - width) / 2
+   marginY = (height/imageScale - height) / 2
+
+heatOffsetX = 0
+heatOffsetY = 0
+camOffsetX = 0
+camOffsetY = 0
 
 #let the sensor initialize
 time.sleep(.1)
@@ -247,6 +260,7 @@ while(running):
                                                 MINTEMP = 0
 
                                 if menuBack.collidepoint(pos):
+                                        lcd.fill((0,0,0))
                                         menuDisplay = False
                                 if menuExit.collidepoint(pos):
                                         running = False
@@ -275,6 +289,30 @@ while(running):
                         if (event.key == K_UP) :
                                 offsetY -= 1
 
+                        # keep the scaled heat image within screen
+                        heatOffsetX = offsetX
+                        camOffsetX  = 0
+                        if ( heatOffsetX > marginX ) :
+                            heatOffsetX = marginX
+                            camOffsetX  = offsetX - marginX
+                        if ( heatOffsetX < -marginX ) :
+                            heatOffsetX = -marginX
+                            camOffsetX  = offsetX + marginX
+
+                        heatOffsetY = offsetY
+                        if ( heatOffsetY > marginY ) :
+                            heatOffsetY = marginY
+                            camOffsetY  = offsetY - marginY
+                        if ( heatOffsetY < -marginY ) :
+                            heatOffsetY = -marginY
+                            camOffsetY  = offsetY + marginY
+
+                        #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
+
+
+                            
+                            
+
 
         if heatDisplay :
                 # heatDisplay == 0      camera only
@@ -297,8 +335,9 @@ while(running):
                 if imageScale < 1.0 and heatDisplay != 3:
                         heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
                         heatRect = heatImage.get_rect(center=lcdRect.center)
-                        pygame.Rect.move_ip(heatRect,offsetX,offsetY)
+                        pygame.Rect.move_ip(heatRect,heatOffsetX,heatOffsetY)
                 else:
+                        # show heat, full scale
                         heatImage = pygame.transform.smoothscale(heat, (width,height))
                         heatRect = heatImage.get_rect(center=lcdRect.center)
 
@@ -306,6 +345,7 @@ while(running):
 
                 # add camera
                 if heatDisplay == 2 :
+                        # heat display with edge detect camera overlay
                         camImage = pygame.transform.laplacian(cam.get_image())
                         overlay.fill((0,0,0))
                         pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
@@ -315,33 +355,24 @@ while(running):
                                 overlay2 = overlay
 
                         overlay2Rect = overlay2.get_rect(center=lcdRect.center)
+                        pygame.Rect.move_ip(overlay2Rect,-camOffsetX,-camOffsetY)
                         overlay2.set_colorkey((0,0,0))
                         lcd.blit(overlay2,overlay2Rect)
 
                 if heatDisplay == 1 :
+                        # heat display with alpha camera overlay
                         if imageScale > 1.0 :
                                 camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
                         else:
                                 camImage = cam.get_image()
 
                         camRect = camImage.get_rect(center=lcdRect.center)
+                        pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
                         camImage.set_alpha(100)
                         lcd.blit(camImage,camRect)
 
-                # display max/min
-                lcd.blit(MAXtext,MAXtextPos)
-                fahrenheit = MAXTEMP*1.8 + 32
-                text = font.render('%d'%fahrenheit, True, WHITE)
-                textPos = text.get_rect(center=(290,60))
-                lcd.blit(text,textPos)
-
-                lcd.blit(MINtext,MINtextPos)
-                fahrenheit = MINTEMP*1.8 + 32
-                text = font.render('%d'%fahrenheit, True, WHITE)
-                textPos = text.get_rect(center=(290,180))
-                lcd.blit(text,textPos)
-
         else:
+                # show camera, full scale, no heat
                 camImage = cam.get_image()
                 lcd.blit(camImage,(0,0))
 
@@ -355,8 +386,11 @@ while(running):
         # remote stream capture
         # similar to imageCapture, but invoked by GPIO
         # capture continues until stopped
-        # for example,from a shell window: start capture:  gpio -g 5 1
-        #                                  stop capture:   gpio -g 5 0
+        # from a shell window: start capture:  gpio -g write 5 1
+        #                       stop capture:  gpio -g write 5 0
+        # (Raspberry Pi 4 requires gpio v2.52
+        #     wget https://project-downloads.drogon.net/wiringpi-latest.deb
+        #     sudo dpkg -i wiringpi-latest.deb )
         if GPIO.input(streamCapture) :
                 fileNum = fileNum + 1
                 fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
@@ -364,6 +398,19 @@ while(running):
         
         # add menu overlay
         if menuDisplay :
+                # display max/min
+                lcd.blit(MAXtext,MAXtextPos)
+                fahrenheit = MAXTEMP*1.8 + 32
+                text = font.render('%d'%fahrenheit, True, WHITE)
+                textPos = text.get_rect(center=(290,60))
+                lcd.blit(text,textPos)
+
+                lcd.blit(MINtext,MINtextPos)
+                fahrenheit = MINTEMP*1.8 + 32
+                text = font.render('%d'%fahrenheit, True, WHITE)
+                textPos = text.get_rect(center=(290,180))
+                lcd.blit(text,textPos)
+
                 lcd.blit(menu,(0,0))
 
         # display
