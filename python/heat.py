@@ -1,10 +1,5 @@
 #!/usr/bin/python
 
-#----------------------------------------------
-# Enter camera Field Of View here (in degrees):
-camFOV = 35
-#----------------------------------------------
-
 import adafruit_mlx90640
 
 import pygame
@@ -22,6 +17,19 @@ import board
 import busio
 
 import RPi.GPIO as GPIO
+
+from configparser import ConfigParser
+
+# read config
+config = ConfigParser()
+config.read('config.ini')
+offsetX = config.getint('ThermalCamera','offsetX')
+offsetY = config.getint('ThermalCamera','offsetY')
+width = config.getint('ThermalCamera','width')
+height = config.getint('ThermalCamera','height')
+camFOV = config.getint('ThermalCamera','camFOV')
+heatFOV = config.getint('ThermalCamera','heatFOV')
+
 
 # MUST set I2C freq to 1MHz in /boot/config.txt
 i2c = busio.I2C(board.SCL, board.SDA)
@@ -53,8 +61,6 @@ except:
 pygame.init()
 
 font = pygame.font.Font(None, 30)
-height = 240
-width = 320
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
@@ -98,25 +104,12 @@ menu.set_colorkey((0,0,0))
 def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
-def map(x, in_min, in_max, out_min, out_max):
-  if x > 80 :
-    x = 0
-  x = constrain(x, in_min, in_max)
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-
 def map_pixel(x, in_min, in_max, out_min, out_max):
-    #if x > 80 :
-    #    x = 0
-    #x = constrain(x, in_min, in_max)
     cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
     return colormap[constrain(int(cindex), 0, COLORDEPTH - 1) ]
-    #return colors[constrain(int(cindex), 0, COLORDEPTH - 1) ]
-    #return colors[int(cindex)]
-
 
 def gaussian(x, a, b, c, d=0):
     return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
-
 
 def gradient(x, width, cmap, spread=1):
     width = float(width)
@@ -206,12 +199,7 @@ heatDisplay = 1
 imageCapture = False
 
 # Field of View and Scale
-heatFOV = 40
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-
-# should read these from a config file... hmm, as well as FOV, height,width.
-offsetX = 0
-offsetY = 0
 
 # heat margins after scaling. Only used for wide heat images (imageScale < 1).
 # keep scaled heat image within display boundaries after offsets applied; offset cam image if necessary
@@ -306,7 +294,13 @@ while(running):
                         if ( heatOffsetY < -marginY ) :
                             heatOffsetY = -marginY
                             camOffsetY  = offsetY + marginY
-
+                        
+                        if (event.key == K_w) :
+                                # write config
+                                config.set('ThermalCamera', 'offsetX',str(offsetX))
+                                config.set('ThermalCamera', 'offsetY',str(offsetY))
+                                with open('config.ini', 'w') as f:
+                                        config.write(f)
                         #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
 
 
