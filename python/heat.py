@@ -214,8 +214,14 @@ heatOffsetY = 0
 camOffsetX = 0
 camOffsetY = 0
 
+# event to calculate offsets
+OFFSETS = pygame.event.Event(pygame.USEREVENT)
+
+# trigger offset calculation
+pygame.event.post(OFFSETS)
+
 #let the sensor initialize
-time.sleep(.1)
+#time.sleep(.1)
         
 # loop...
 running = True
@@ -269,15 +275,28 @@ while(running):
 
                         if (event.key == K_RIGHT) :
                                 offsetX += 1
+                                pygame.event.post(OFFSETS)
                         if (event.key == K_LEFT) :
                                 offsetX -= 1
+                                pygame.event.post(OFFSETS)
 
                         if (event.key == K_DOWN) :
                                 offsetY += 1
+                                pygame.event.post(OFFSETS)
                         if (event.key == K_UP) :
                                 offsetY -= 1
+                                pygame.event.post(OFFSETS)
+                        
+                        if (event.key == K_w) :
+                                # write config
+                                config.set('ThermalCamera', 'offsetX',str(offsetX))
+                                config.set('ThermalCamera', 'offsetY',str(offsetY))
+                                with open('config.ini', 'w') as f:
+                                        config.write(f)
+                        #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
 
-                        # keep the scaled heat image within screen
+                if (event.type == OFFSETS) :
+                        # keep the offset scaled heat image within screen, move camera if necessary
                         heatOffsetX = offsetX
                         camOffsetX  = 0
                         if ( heatOffsetX > marginX ) :
@@ -294,14 +313,6 @@ while(running):
                         if ( heatOffsetY < -marginY ) :
                             heatOffsetY = -marginY
                             camOffsetY  = offsetY + marginY
-                        
-                        if (event.key == K_w) :
-                                # write config
-                                config.set('ThermalCamera', 'offsetX',str(offsetX))
-                                config.set('ThermalCamera', 'offsetY',str(offsetY))
-                                with open('config.ini', 'w') as f:
-                                        config.write(f)
-                        #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
 
 
                             
