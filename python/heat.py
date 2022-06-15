@@ -69,7 +69,8 @@ BLACK = (0,0,0)
 # initialize the sensor
 mlx = adafruit_mlx90640.MLX90640(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_64_HZ
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -192,7 +193,7 @@ streamCapture = 5
 GPIO.setup(streamCapture, GPIO.OUT)
 GPIO.output(streamCapture, False)
 fileNum = 0
-fileStream = time.strftime("%Y%m%d-%H%M-", time.localtime())
+fileDate = ""
 
 temps = [0] * 768
 
@@ -205,10 +206,10 @@ imageCapture = False
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
 
 # heat margins after scaling. Only used for wide heat images (imageScale < 1).
-# keep scaled heat image within display boundaries after offsets applied; offset cam image if necessary
+# keep edges of scaled heat image outside display boundaries after offsets applied; offset cam image if necessary
 marginX = 0
 marginY = 0
-if ( imageScale < 1 ) :
+if imageScale < 1 :
    marginX = (width/imageScale - width) / 2
    marginY = (height/imageScale - height) / 2
 
@@ -222,9 +223,6 @@ OFFSETS = pygame.event.Event(pygame.USEREVENT)
 
 # trigger offset calculation
 pygame.event.post(OFFSETS)
-
-#let the sensor initialize
-#time.sleep(.1)
         
 # loop...
 running = True
@@ -296,7 +294,6 @@ while(running):
                                 config.set('ThermalCamera', 'offsetY',str(offsetY))
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
-                        #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
 
                 if (event == OFFSETS) :
                         # keep the offset scaled heat image within screen, move camera if necessary
@@ -310,6 +307,7 @@ while(running):
                             camOffsetX  = offsetX + marginX
 
                         heatOffsetY = offsetY
+                        camOffsetY = 0
                         if ( heatOffsetY > marginY ) :
                             heatOffsetY = marginY
                             camOffsetY  = offsetY - marginY
@@ -393,8 +391,8 @@ while(running):
         # capture single frame to file, without menu overlay
         if imageCapture :
                 imageCapture = False
-                fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                fileName = "/home/pi/Pictures/heat%s.jpg" % fileDate
+                #fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                fileName = "/home/pi/Pictures/heat%s.jpg" % time.strftime("%Y%m%d-%H%M%S", time.localtime())
                 pygame.image.save(lcd, fileName)
 
         # remote stream capture
@@ -406,10 +404,17 @@ while(running):
         #     wget https://project-downloads.drogon.net/wiringpi-latest.deb
         #     sudo dpkg -i wiringpi-latest.deb )
         if GPIO.input(streamCapture) :
+                if fileDate == "" :
+                        fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                        fileNum = 0
+
+                fileName = "/home/pi/Pictures/heat%s-%04d.jpg" % (fileDate, fileNum)
                 fileNum = fileNum + 1
-                fileName = "/home/pi/Pictures/heat%s%04d.jpg" % (fileStream, fileNum)
                 pygame.image.save(lcd, fileName)
-        
+
+        if not GPIO.input(streamCapture) and fileDate != "" :
+                fileDate = ""
+
         # add menu overlay
         if menuDisplay :
                 # display max/min
