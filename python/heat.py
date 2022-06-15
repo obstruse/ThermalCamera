@@ -29,6 +29,7 @@ width = config.getint('ThermalCamera','width')
 height = config.getint('ThermalCamera','height')
 camFOV = config.getint('ThermalCamera','camFOV')
 heatFOV = config.getint('ThermalCamera','heatFOV')
+theme = config.getint('ThermalCamera','theme')
 
 
 # MUST set I2C freq to 1MHz in /boot/config.txt
@@ -106,7 +107,7 @@ def constrain(val, min_val, max_val):
 
 def map_pixel(x, in_min, in_max, out_min, out_max):
     cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-    return colormap[constrain(int(cindex), 0, COLORDEPTH - 1) ]
+    return colormap[theme][constrain(int(cindex), 0, COLORDEPTH - 1) ]
 
 def gaussian(x, a, b, c, d=0):
     return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
@@ -158,7 +159,7 @@ MINtextPos = MINtext.get_rect(center=(290,140))
 
 #how many color values we can have
 COLORDEPTH = 1024
-colormap = [0] * COLORDEPTH
+colormap = [[0] * COLORDEPTH for _ in range(1)] * 3
 
 # method 1
 # ... gradient
@@ -173,14 +174,16 @@ heatmap = (
     (0.90, (1.0, 0.75, 0)),
     (1.00, (1.0, 1.0, 1.0)),
 )
-colormap = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
+colormap[0] = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
 
 # method 2
 # ... range_to (color)
 blue = Color("indigo")
-#colors = list(blue.range_to(Color("red"), COLORDEPTH))
 #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-#colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+colors = list(blue.range_to(Color("red"), COLORDEPTH))
+colormap[1] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+colors = list(blue.range_to(Color("orange"), COLORDEPTH))
+colormap[2] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 
 
@@ -295,7 +298,7 @@ while(running):
                                         config.write(f)
                         #print("offsetX: %d, offsetY: %d, heatOffsetX: %d camOffsetX: %d\n" % (offsetX, offsetY, heatOffsetX, camOffsetX) )
 
-                if (event.type == OFFSETS) :
+                if (event == OFFSETS) :
                         # keep the offset scaled heat image within screen, move camera if necessary
                         heatOffsetX = offsetX
                         camOffsetX  = 0
@@ -320,6 +323,12 @@ while(running):
 
 
         if heatDisplay :
+                # the pygame camera buffering causes the camera image to lag beind the heat image
+                # this extra get_image helps.  
+                # There will be another camera image available when heat has processed
+                if (cam.query_image() ) :
+                    cam.get_image()
+
                 # heatDisplay == 0      camera only
                 # heatDisplay == 1      heat + camera
                 # heatDisplay == 2      heat + edge
