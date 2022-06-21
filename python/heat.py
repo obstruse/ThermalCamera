@@ -20,6 +20,7 @@ import RPi.GPIO as GPIO
 
 from configparser import ConfigParser
 
+
 # read config
 config = ConfigParser()
 config.read('config.ini')
@@ -40,24 +41,8 @@ GPIO.setwarnings(False)
 
 
 # initialize display environment
-try:
-        os.putenv('SDL_FBDEV', '/dev/fb1')
-        os.putenv('SDL_VIDEODRIVER', 'fbcon')
-        os.putenv('SDL_MOUSEDRV', 'TSLIB')
-        os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
-        os.putenv('SDL_AUDIODRIVER', 'dummy')
-        pygame.display.init()
-        pygame.mouse.set_visible(False)
-
-except:
-        pygame.quit()
-        os.unsetenv('SDL_FBDEV')
-        os.unsetenv('SDL_VIDEODRIVER')
-        os.unsetenv('SDL_MOUSEDRV')
-        os.unsetenv('SDL_MOUSEDEV')
-        pygame.display.init()
-        pygame.display.set_caption('ThermalCamera')
-
+pygame.display.init()
+pygame.display.set_caption('ThermalCamera')
 
 pygame.init()
 
@@ -66,11 +51,11 @@ font = pygame.font.Font(None, 30)
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
+
 # initialize the sensor
 mlx = adafruit_mlx90640.MLX90640(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
-mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_64_HZ
+mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -91,7 +76,7 @@ lcd = pygame.display.set_mode((width,height))
 lcdRect = lcd.get_rect()
 
 # heat surface
-heat = pygame.surface.Surface((width, height))
+heat = pygame.surface.Surface((32,24))
 
 # edge detect surface
 overlay = pygame.surface.Surface((width, height))
@@ -160,7 +145,7 @@ MINtextPos = MINtext.get_rect(center=(290,140))
 
 #how many color values we can have
 COLORDEPTH = 1024
-colormap = [[0] * COLORDEPTH for _ in range(1)] * 3
+colormap = [[0] * COLORDEPTH for _ in range(1)] * 4
 
 # method 1
 # ... gradient
@@ -180,11 +165,14 @@ colormap[0] = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
 # method 2
 # ... range_to (color)
 blue = Color("indigo")
+red  = Color("red")
 #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
 colors = list(blue.range_to(Color("red"), COLORDEPTH))
 colormap[1] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 colors = list(blue.range_to(Color("orange"), COLORDEPTH))
 colormap[2] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+colors = list(red.range_to(Color("yellow"), COLORDEPTH))
+colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 
 
@@ -199,7 +187,7 @@ temps = [0] * 768
 
 # flags
 menuDisplay = False 
-heatDisplay = 1
+heatDisplay = 2
 imageCapture = False
 
 # Field of View and Scale
@@ -391,7 +379,6 @@ while(running):
         # capture single frame to file, without menu overlay
         if imageCapture :
                 imageCapture = False
-                #fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
                 fileName = "/home/pi/Pictures/heat%s.jpg" % time.strftime("%Y%m%d-%H%M%S", time.localtime())
                 pygame.image.save(lcd, fileName)
 
@@ -414,6 +401,7 @@ while(running):
 
         if not GPIO.input(streamCapture) and fileDate != "" :
                 fileDate = ""
+                print("frames captured:",fileNum)
 
         # add menu overlay
         if menuDisplay :
