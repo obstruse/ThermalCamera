@@ -24,13 +24,14 @@ from configparser import ConfigParser
 # read config
 config = ConfigParser()
 config.read('config.ini')
-offsetX = config.getint('ThermalCamera','offsetX')
-offsetY = config.getint('ThermalCamera','offsetY')
-width = config.getint('ThermalCamera','width')
-height = config.getint('ThermalCamera','height')
-camFOV = config.getint('ThermalCamera','camFOV')
-heatFOV = config.getint('ThermalCamera','heatFOV')
-theme = config.getint('ThermalCamera','theme')
+offsetX = config.getint('ThermalCamera','offsetX',fallback=0)
+offsetY = config.getint('ThermalCamera','offsetY',fallback=0)
+width = config.getint('ThermalCamera','width',fallback=320)
+height = config.getint('ThermalCamera','height',fallback=240)
+camFOV = config.getint('ThermalCamera','camFOV',fallback=35)
+heatFOV = config.getint('ThermalCamera','heatFOV',fallback=40)
+theme = config.getint('ThermalCamera','theme',fallback=0)
+videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 
 
 # MUST set I2C freq to 1MHz in /boot/config.txt
@@ -66,7 +67,7 @@ MAXTEMP = (100 - 32) / 1.8
 
 # initialize camera
 pygame.camera.init()
-cam = pygame.camera.Camera("/dev/video0",(width, height))
+cam = pygame.camera.Camera(videoDev,(width, height))
 cam.start()
 
 
@@ -149,7 +150,6 @@ colormap = [[0] * COLORDEPTH for _ in range(1)] * 4
 
 # method 1
 # ... gradient
-# ... how this works??
 # the list of colors we can choose from
 heatmap = (
     (0.0, (0, 0, 0)),
@@ -187,7 +187,7 @@ temps = [0] * 768
 
 # flags
 menuDisplay = False 
-heatDisplay = 2
+heatDisplay = 1
 imageCapture = False
 
 # Field of View and Scale
@@ -206,7 +206,7 @@ heatOffsetY = 0
 camOffsetX = 0
 camOffsetY = 0
 
-# event to calculate offsets
+# event to calculate offsets (playing with events...)
 OFFSETS = pygame.event.Event(pygame.USEREVENT)
 
 # trigger offset calculation
@@ -316,8 +316,8 @@ while(running):
                     cam.get_image()
 
                 # heatDisplay == 0      camera only
-                # heatDisplay == 1      heat + camera
-                # heatDisplay == 2      heat + edge
+                # heatDisplay == 1      heat + edge
+                # heatDisplay == 2      heat + camera
                 # heatDisplay == 3      heat only
 
                 # read temperatures from sensor
@@ -344,7 +344,7 @@ while(running):
                 lcd.blit(heatImage,heatRect)
 
                 # add camera
-                if heatDisplay == 2 :
+                if heatDisplay == 1 :
                         # heat display with edge detect camera overlay
                         camImage = pygame.transform.laplacian(cam.get_image())
                         overlay.fill((0,0,0))
@@ -359,7 +359,7 @@ while(running):
                         overlay2.set_colorkey((0,0,0))
                         lcd.blit(overlay2,overlay2Rect)
 
-                if heatDisplay == 1 :
+                if heatDisplay == 2 :
                         # heat display with alpha camera overlay
                         if imageScale > 1.0 :
                                 camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))

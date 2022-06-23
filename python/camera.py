@@ -6,35 +6,26 @@ from pygame.locals import *
 import os
 from PIL import Image
 
-# initialize display
-try:
-	os.putenv('SDL_FBDEV', '/dev/fb1')
-	os.putenv('SDL_VIDEODRIVER','fbcon')
-	os.putenv('SDL_MOUSEDRV', 'TSLIB')
-	os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
-	os.putenv('SDL_AUDIODRIVER', 'dummy')
-	pygame.display.init()
-	pygame.mouse.set_visible(False)
+from configparser import ConfigParser
 
-except:
-	pygame.quit()
-	os.unsetenv('SDL_FBDEV')
-	os.unsetenv('SDL_VIDEODRIVER')
-	os.unsetenv('SDL_MOUSEDRV')
-	os.unsetenv('SDL_MOUSEDEV')
-	pygame.display.init()
-	pygame.display.set_caption('Camera')
+# read config
+config = ConfigParser()
+config.read('config.ini')
+width = config.getint('ThermalCamera','width', fallback=320)
+height = config.getint('ThermalCamera','height', fallback=240)
+videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
+
+# initialize display
+pygame.display.init()
+pygame.display.set_caption('Camera')
 
 pygame.init()
 
 pygame.camera.init()
 
-height = 240
-width = 320
-
 lcd = pygame.display.set_mode((width,height))
 
-cam = pygame.camera.Camera("/dev/video0",(width,height))
+cam = pygame.camera.Camera(videoDev,(width,height))
 cam.start()
 
 running = True

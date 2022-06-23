@@ -1,43 +1,51 @@
 # ThermalCamera
-Thermal Camera with Video Overlay for Raspberry Pi
+![](/Images/heat20220617-185005.gif)
+
+MLX90640 Thermal Camera with Edge Detect Video Overlay, for Raspberry Pi
+
+The Thermal Camera resolution is 32x24, scaled to match the Video Camera resolution.  Running the Video Camera at high resolutions lowers the framerate due to the Laplacian Edge Detect processing:
+
+![Table](/Images/table.png)
+
+
 
 ## Hardware
-- Raspberry Pi 3 (https://www.adafruit.com/product/3055)
-- Adafruit AMG8833 IR Thermal Camera Breakout (https://www.adafruit.com/product/3538)
-- USB Camera (https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0 , see below)
-- Power supply, 5V 2.4A (https://www.adafruit.com/product/1995)
+- Raspberry Pi
+- [Adafruit MLX90640 IR Thermal Camera Breakout](https://www.adafruit.com/product/4407)
+- USB Camera (see below)
 
-Optional:
-- Adafruit PiTFT Plus 320x240 2.8" TFT + Capacitive Touchscreen (https://www.adafruit.com/product/2423)
-- PiTFT Pibow+ Kit (https://www.adafruit.com/product/2779)
-- Pi Cobbler (https://www.adafruit.com/product/2029)
-  or
-  - GPIO Ribbon Cable (https://www.adafruit.com/product/1988)
-  - Extra-long Break-away 0.1" 16-pin male header (https://www.adafruit.com/product/400)
-- Breadboard
 
-### Wiring
-The Thermal Camera connects using I2C:
 
-![Wiring](/Images/wiring.png)
+### Cameras
 
-### USB Camera
-Just about any USB camera can be used.  Most webcams however, aren't designed for easy mounting.  For example, the Creative HD 720p:
+The cameras need to be mounted flat and as close together as possible:
 
-![Mounting](Images/IMG_0788-3.JPG)
+![](Images/IMG_20220620_104815644.jpg)
 
-The "Bare USB Webcam" from Public Lab ( https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0) works better: 
+The USB camera pictured is 
+["Bare USB Webcam" from Public Lab](https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0) which unfortunately is no longer available. 
 
-![Bare USB Camera](Images/IMG_0789-3.JPG)
+These will probably work, but with a different FOV:
+- [Arducam OV5648](https://www.arducam.com/product/arducam-ov5648-auto-focus-usb-camera-ub0238-6/)
 
-...and the complete assembly fits on the back of the PiTFT Pibow (https://www.adafruit.com/product/2779):
+- [Newcamermoudle 5MP CMOS Sensor](https://newcameramodule.com/product/small-size-5mp-cmos-sensor-usb-2-0-camera-module/)
 
-![Camera](Images/IMG_0791-3.JPG)
+By default the camera device is `/dev/video0`.  To change it, edit `videoDev` in `config.ini`:
 
+```
+videoDev = /dev/video0
+```
 
 ## Software
 
+![](Images/heat20220618-112607.gif)
 ### Installation
+
+Installs:
+- pygame
+- colour
+- MLX90640
+- wiringPi
 
 ```
 cd /home/pi
@@ -47,16 +55,18 @@ sudo ThermalCamera/install/installThermalCamera.sh
 
 ### Execution
 
-Run the program by clicking on the Desktop icon, or from the command line:
+Run the program from the command line:
 ```
 /home/pi/ThermalCamera/python/heat.py
 ```
 
+You can run the program remotely from an SSH connection, with the heat displayed in an X-window.  Framerate will drop (see timings above)
+
 Click on the window to bring up the menu overlay:
 
-![Menu](Images/TCmenu.png)
+![Menu](Images/heat20220622-132440.jpg)
 
-commands|&nbsp;
+Commands|&nbsp;
 -|-
 MAX/+/- | changes the maximum threshold for red pixels. 
 MIN/+/- | changes the minimum threshold for blue pixels.
@@ -72,50 +82,54 @@ Display Modes:
 - heat only (no scaling)
 - camera only (no scaling)
 
+The __Capture__ only saves a single image.  To capture series of images over a period of time, use the gpio command to set GPIO5.  For example, to capture 3 seconds of images, this command:
 
-### Calibration
+```
+pi@rpi4:~ $ gpio -g write 5 1; sleep 3; gpio -g write 5 0
+```
+The captured images in /home/pi/Pictures can be combined into an MP4 or GIF using ffmpeg and convert, for example:
+```
+#!
+PATTERN=${1}
+convert -delay 8 -coalesce -duplicate 1,-2-1 -layers Optimize -loop 0 ${PATTERN}\*.jpg ${PATTERN}.gif
+```
 
-To get the camera image to match the heat image, the Fields Of View must match.  Measure the camera FOV using the 'camera only' mode on heat.py (or use camera.py):
+### Alignment
 
-![Calibrate](Images/IMG_0807-3.JPG)
 
-Enter the value at the top of ThermalCamera/python/heat.py:
+#### Field Of View (FOV)
+
+The script needs the FOV of both cameras in order to scale the images properly.  The camera data sheet might have a value for FOV, but it's often missing or incorrect.  
+
+To measure the FOV, use the *heat only* and *camera only* modes of `heat.py`.  Separate two objects horizontally until they are at the edges of the image.  Measure the distance between the objects and the distance to the camera to calculate the FOV:
+
+__FOV = degrees(atan(width/distance/2)*2)__
+
+![FOV](Images/align.png)
+
+Enter the values for `camFOV` and `heatFOV` in `config.ini`:
 
 ```
 camFOV = 35
+heatfov = 40
 ```
 
-I get approximately 35 degrees for the Bare USB Camera.
+#### Offset
 
-## Touchscreen
+If you carefully mounted the two cameras, the two images should line up fairly well... but then there's the parallax caused by the distance between them.  
 
-### Raspbian Image
+To correct for mounting errors and parallax, use the keyboard arrow keys to offset the images until they line up.  Press 'w' to save the offsets in the `config.ini` file
 
-For the capacitive touch 2.8" touchscreen, burn the "Easy Install" 'classic Jessie' image to an 8G SD card:
+---
+---
 
-https://s3.amazonaws.com/adafruit-raspberry-pi/2016-10-18-pitft-28c.zip
+![Camera](Images/IMG_0791-3.JPG)
 
-For the resistive touchscreen (not tested), use:
+Thermal Camera with LCD Touchscreen
 
-https://s3.amazonaws.com/adafruit-raspberry-pi/2016-10-18-pitft-28r.zip
+![Hot Watermelon](Images/heat20220616-094600.gif)
+![PiZero](Images/heat20220613-2059.gif)
 
-This is pre-configured with the touchscreen drivers required (ft6x06_ts) to work with pygame and SDL1.2
+![EICO 460](Images/heat20220621-1835302.gif)
 
-When this image boots, the PiTFT Desktop will look like this:
-
-![Desktop](Images/screen7.png)
-
-Unfortunately, the screen is too small to run the Preferences/Raspberry Pi Configuration; the icons at the top overlap so it's difficult to click on the WiFi icon to enable WiFi. Without WiFi you can't SSH to the Pi to install the program.
-
-One solution is to mount the SD on your Desktop computer and copy the miniDesk script to /home/pi/Desktop:
-
-https://raw.githubusercontent.com/obstruse/ThermalCamera/master/install/miniDesk
-
-When the Pi boots, there will be a miniDesk icon on the Desktop.  Click it, logout and login, and you will have the simplified Desktop menus:
-
-![Desktop](Images/screen1.png)
-
-'Single-click' is also enabled: no need to double-click to execute an icon. Click the WiFi icon to enable and configure WiFi.
-
-When ThermalCamera is installed, there will be a 'Heat' icon on the PiTFT Desktop.  Touch that to run the program
-
+EICO 460 Oscilloscope chassis hot spots
