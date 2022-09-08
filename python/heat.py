@@ -218,7 +218,7 @@ while(running):
 
         # scan events
         for event in pygame.event.get():
-                if (event.type is MOUSEBUTTONUP):
+                if (event.type == MOUSEBUTTONUP):
                         if menuDisplay :
                                 pos = pygame.mouse.get_pos()
                                 if menuMaxPlus.collidepoint(pos):
