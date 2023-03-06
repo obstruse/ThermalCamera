@@ -1,11 +1,14 @@
 #!/usr/bin/python
 
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 import adafruit_mlx90640
 
 import pygame
 import pygame.camera
 from pygame.locals import *
-import os
+
 import math
 import time
 
@@ -20,6 +23,8 @@ import RPi.GPIO as GPIO
 
 from configparser import ConfigParser
 
+# change to the python directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # read config
 config = ConfigParser()
@@ -67,7 +72,7 @@ MAXTEMP = (100 - 32) / 1.8
 
 # initialize camera
 pygame.camera.init()
-cam = pygame.camera.Camera(videoDev,(width, height))
+cam = pygame.camera.Camera(videoDev,(width, height))  # actual camera resolution may be different
 cam.start()
 
 
@@ -79,9 +84,10 @@ lcdRect = lcd.get_rect()
 # heat surface
 heat = pygame.surface.Surface((32,24))
 
-# edge detect surface
-overlay = pygame.surface.Surface((width, height))
+# camera edge detect overlay surface
+overlay = pygame.surface.Surface(cam.get_size())      # match size to camera resolution
 overlay.set_colorkey((0,0,0))
+print(cam.get_size())
 
 # menu surface
 menu = pygame.surface.Surface((width, height))
@@ -352,7 +358,7 @@ while(running):
                         if imageScale > 1.0 :
                                 overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
                         else:
-                                overlay2 = overlay
+                                overlay2 = pygame.transform.scale(overlay,(width,height))
 
                         overlay2Rect = overlay2.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(overlay2Rect,-camOffsetX,-camOffsetY)
@@ -364,7 +370,7 @@ while(running):
                         if imageScale > 1.0 :
                                 camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
                         else:
-                                camImage = cam.get_image()
+                                camImage = pygame.transform.scale(cam.get_image(), (width,height))
 
                         camRect = camImage.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
@@ -373,13 +379,13 @@ while(running):
 
         else:
                 # show camera, full scale, no heat
-                camImage = cam.get_image()
+                camImage = pygame.transform.scale(cam.get_image(), (width,height))
                 lcd.blit(camImage,(0,0))
 
         # capture single frame to file, without menu overlay
         if imageCapture :
                 imageCapture = False
-                fileName = "/home/pi/Pictures/heat%s.jpg" % time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
                 pygame.image.save(lcd, fileName)
 
         # remote stream capture
@@ -395,7 +401,7 @@ while(running):
                         fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
                         fileNum = 0
 
-                fileName = "/home/pi/Pictures/heat%s-%04d.jpg" % (fileDate, fileNum)
+                fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
                 fileNum = fileNum + 1
                 pygame.image.save(lcd, fileName)
 
