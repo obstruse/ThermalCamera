@@ -133,22 +133,26 @@ def menuButton( menuText, menuCenter, menuSize ) :
         return mbRect
 
 # menu buttons and text
-menuMaxPlus = menuButton('+',(230,30),(60,60) )
-menuMaxMinus = menuButton('-',(230,90),(60,60) )
-menuMinPlus = menuButton('+',(230,150),(60,60) )
-menuMinMinus = menuButton('-',(230,210),(60,60) )
-
 menuCapture = menuButton('Capture',(60,30),(120,60) )
 menuMode = menuButton('Mode',(60,90),(120,60) )
 
 menuBack = menuButton('Back',(60,150),(120,60) )
 menuExit = menuButton('Exit',(60,210),(120,60) )
 
+menuMaxPlus = menuButton('+',(width-90,30),(60,60) )
+menuMaxMinus = menuButton('-',(width-90,90),(60,60) )
+menuMinPlus = menuButton('+',(width-90,150),(60,60) )
+menuMinMinus = menuButton('-',(width-90,210),(60,60) )
+
 MAXtext = font.render('MAX', True, WHITE)
-MAXtextPos = MAXtext.get_rect(center=(290,20))
+MAXtextPos = MAXtext.get_rect(center=(width-60,20))
+MAXnum  = font.render('999', True, WHITE)
+MAXnumPos  = MAXnum.get_rect(center=(width-60,60))
 
 MINtext = font.render('MIN', True, WHITE)
-MINtextPos = MINtext.get_rect(center=(290,140))
+MINtextPos = MINtext.get_rect(center=(width-60,140))
+MINnum  = font.render('999', True, WHITE)
+MINnumPos  = MINnum.get_rect(center=(width-60,180))
 
 #how many color values we can have
 COLORDEPTH = 1024
@@ -414,15 +418,15 @@ while(running):
                 # display max/min
                 lcd.blit(MAXtext,MAXtextPos)
                 fahrenheit = MAXTEMP*1.8 + 32
-                text = font.render('%d'%fahrenheit, True, WHITE)
-                textPos = text.get_rect(center=(290,60))
-                lcd.blit(text,textPos)
+                MAXnum = font.render('%d'%fahrenheit, True, WHITE)
+                #textPos = text.get_rect(center=(290,60))
+                lcd.blit(MAXnum,MAXnumPos)
 
                 lcd.blit(MINtext,MINtextPos)
                 fahrenheit = MINTEMP*1.8 + 32
-                text = font.render('%d'%fahrenheit, True, WHITE)
-                textPos = text.get_rect(center=(290,180))
-                lcd.blit(text,textPos)
+                MINnum = font.render('%d'%fahrenheit, True, WHITE)
+                #textPos = text.get_rect(center=(290,180))
+                lcd.blit(MINnum,MINnumPos)
 
                 lcd.blit(menu,(0,0))
 
