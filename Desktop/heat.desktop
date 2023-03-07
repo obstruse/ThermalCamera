@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=heat
-Comment=Thermal Camera
-Icon=/usr/share/pixmaps/supercollider.xpm
-Exec=sudo -E /home/pi/ThermalCamera/python/heat.py
-Type=Application
-Encoding=UTF-8
-Terminal=false
-Categories=None;

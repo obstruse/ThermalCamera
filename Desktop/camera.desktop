@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=camera
-Comment=USB camera
-Icon=/usr/share/pixmaps/supercollider.xpm
-Exec=sudo -E /home/pi/ThermalCamera/python/camera.py
-Type=Application
-Encoding=UTF-8
-Terminal=false
-Categories=None;
