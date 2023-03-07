@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 import os
@@ -36,7 +36,7 @@ width = config.getint('ThermalCamera','width',fallback=320)
 height = config.getint('ThermalCamera','height',fallback=240)
 camFOV = config.getint('ThermalCamera','camFOV',fallback=35)
 heatFOV = config.getint('ThermalCamera','heatFOV',fallback=40)
-theme = config.getint('ThermalCamera','theme',fallback=0)
+theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 
 
@@ -337,6 +337,8 @@ while(running):
                 except RuntimeError as err:
                     print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
                     sys.exit(1)
+                except ValueError:
+                    continue
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')

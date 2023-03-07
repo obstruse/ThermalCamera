@@ -35,13 +35,14 @@ By default the camera device is `/dev/video0`.  To change it, edit `videoDev` in
 ```
 videoDev = /dev/video0
 ```
+---
 
-## Software
+## Setup
 
 ![](Images/heat20220618-112607.gif)
 ### Installation
 
-Installs:
+The installation script installs:
 - pygame
 - colour
 - MLX90640
@@ -52,8 +53,36 @@ cd /home/pi
 git clone https://github.com/obstruse/ThermalCamera.git
 sudo ThermalCamera/install/installThermalCamera.sh
 ```
+### I2C Baudrate
 
-### Execution
+Increase the I2C baudrate to 1 MHz by editing `/boot/config.txt`.
+Modify the **dtparam=i2c_arm=on** line to read:
+
+```
+dtparam=i2c_arm=on,i2c_arm_baudrate=1000000
+```
+...and reboot.
+
+### Configuration
+
+Program settings can be changed by modifying `config.ini` located in the same directory as `heat.py`
+
+&nbsp;|Configuration Settings|&nbsp;
+-|-|-
+**Key**|**Description**|**Default**
+width | display width | 320
+height | display height | 240
+videoDev | video device | /dev/video0
+camFOV | camera FOV | 35
+heatFOV | heat FOV | 40
+theme | color mapping theme | 1 (0-3 available)
+offsetX | image offset X | 0
+offsetY | image offset Y | 0
+---
+
+
+
+## Execution
 
 Run the program from the command line:
 ```
@@ -93,11 +122,12 @@ The captured images in /home/pi/Pictures can be combined into an MP4 or GIF usin
 PATTERN=${1}
 convert -delay 8 -coalesce -duplicate 1,-2-1 -layers Optimize -loop 0 ${PATTERN}\*.jpg ${PATTERN}.gif
 ```
+---
 
-### Alignment
+## Alignment
 
 
-#### Field Of View (FOV)
+### Field Of View (FOV)
 
 The script needs the FOV of both cameras in order to scale the images properly.  The camera data sheet might have a value for FOV, but it's often missing or incorrect.  
 
@@ -114,7 +144,7 @@ camFOV = 35
 heatfov = 40
 ```
 
-#### Offset
+### Offset
 
 If you carefully mounted the two cameras, the two images should line up fairly well... but then there's the parallax caused by the distance between them.  
 
