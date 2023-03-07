@@ -10,7 +10,7 @@ echo ...update package lists
 apt -qq update
 
 echo ...pygame
-apt -qq install -y python-pygame
+apt -qq install -y python3-pygame
 
 echo ...MLX90640 python module
 pip install -q adafruit-circuitpython-mlx90640
