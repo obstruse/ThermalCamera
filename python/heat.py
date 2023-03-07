@@ -419,14 +419,14 @@ while(running):
                 lcd.blit(MAXtext,MAXtextPos)
                 fahrenheit = MAXTEMP*1.8 + 32
                 MAXnum = font.render('%d'%fahrenheit, True, WHITE)
-                #textPos = text.get_rect(center=(290,60))
-                lcd.blit(MAXnum,MAXnumPos)
+                textPos = MAXnum.get_rect(center=MAXnumPos.center)
+                lcd.blit(MAXnum,textPos)
 
                 lcd.blit(MINtext,MINtextPos)
                 fahrenheit = MINTEMP*1.8 + 32
                 MINnum = font.render('%d'%fahrenheit, True, WHITE)
-                #textPos = text.get_rect(center=(290,180))
-                lcd.blit(MINnum,MINnumPos)
+                textPos = MINnum.get_rect(center=MINnumPos.center)
+                lcd.blit(MINnum,textPos)
 
                 lcd.blit(menu,(0,0))
 
