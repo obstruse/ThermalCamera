@@ -25,7 +25,7 @@ pygame.camera.init()
 
 lcd = pygame.display.set_mode((width,height))
 
-cam = pygame.camera.Camera(videoDev,(width,height))
+cam = pygame.camera.Camera(videoDev,(width,height)) # actual camera resolution may be different
 cam.start()
 
 running = True
@@ -39,7 +39,7 @@ while running:
 			running = False
 
 	if cam.query_image():
-		image = cam.get_image()
+		image = pygame.transform.scale(cam.get_image(), (width,height))
 		lcd.blit(image, (0,0))
 		pygame.display.flip()
 
