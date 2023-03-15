@@ -49,7 +49,6 @@ The installation script installs:
 - wiringPi
 
 ```
-cd /home/pi
 git clone https://github.com/obstruse/ThermalCamera.git
 sudo ThermalCamera/install/installThermalCamera.sh
 ```
@@ -86,7 +85,7 @@ offsetY | image offset Y | 0
 
 Run the program from the command line:
 ```
-/home/pi/ThermalCamera/python/heat.py
+ThermalCamera/python/heat.py
 ```
 
 You can run the program remotely from an SSH connection, with the heat displayed in an X-window.  Framerate will drop (see timings above)
