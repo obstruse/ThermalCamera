@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import sys
 import os
@@ -20,7 +20,7 @@ from colour import Color
 import board
 import busio
 
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 
 from configparser import ConfigParser
 
@@ -39,12 +39,13 @@ heatFOV = config.getint('ThermalCamera','heatFOV',fallback=40)
 theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 
-
+import i2cHDMI
 # MUST set I2C freq to 1MHz in /boot/config.txt
-i2c = busio.I2C(board.SCL, board.SDA)
+#i2c = busio.I2C(board.SCL, board.SDA)
+i2c = i2cHDMI.i2cHDMI(4)
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
+#GPIO.setmode(GPIO.BCM)
+#GPIO.setwarnings(False)
 
 
 # initialize display environment
@@ -62,7 +63,8 @@ BLACK = (0,0,0)
 # initialize the sensor
 mlx = adafruit_mlx90640.MLX90640(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -145,15 +147,21 @@ menuMaxMinus = menuButton('-',(width-90,90),(60,60) )
 menuMinPlus = menuButton('+',(width-90,150),(60,60) )
 menuMinMinus = menuButton('-',(width-90,210),(60,60) )
 
+menuAvg = menuButton('AVG',(width-90,270),(60,60) )
+
 MAXtext = font.render('MAX', True, WHITE)
-MAXtextPos = MAXtext.get_rect(center=(width-60,20))
+MAXtextPos = MAXtext.get_rect(center=(width-30,20))
 MAXnum  = font.render('999', True, WHITE)
-MAXnumPos  = MAXnum.get_rect(center=(width-60,60))
+MAXnumPos  = MAXnum.get_rect(center=(width-30,60))
 
 MINtext = font.render('MIN', True, WHITE)
-MINtextPos = MINtext.get_rect(center=(width-60,140))
+MINtextPos = MINtext.get_rect(center=(width-30,140))
 MINnum  = font.render('999', True, WHITE)
-MINnumPos  = MINnum.get_rect(center=(width-60,180))
+MINnumPos  = MINnum.get_rect(center=(width-30,180))
+
+AVGtemp = 0
+AVGnum = font.render('999', True, WHITE)
+AVGnumPos = AVGnum.get_rect(center=(width-30,270))
 
 #how many color values we can have
 COLORDEPTH = 1024
@@ -189,8 +197,8 @@ colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c i
 
 # streamCapture
 streamCapture = 5
-GPIO.setup(streamCapture, GPIO.OUT)
-GPIO.output(streamCapture, False)
+#GPIO.setup(streamCapture, GPIO.OUT)
+#GPIO.output(streamCapture, False)
 fileNum = 0
 fileDate = ""
 
@@ -265,6 +273,10 @@ while(running):
                                                 heatDisplay = 0
                                 if menuCapture.collidepoint(pos):
                                         imageCapture = not imageCapture
+
+                                if menuAvg.collidepoint(pos):
+                                       MAXTEMP = AVGtemp + (2 / 1.8)
+                                       MINTEMP = AVGtemp - (2 / 1.8)
 
                         else :
                                 menuDisplay = True
@@ -342,6 +354,7 @@ while(running):
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
+                AVGtemp = sum(temps) / len(temps)
 
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
@@ -404,18 +417,18 @@ while(running):
         # (Raspberry Pi 4 requires gpio v2.52
         #     wget https://project-downloads.drogon.net/wiringpi-latest.deb
         #     sudo dpkg -i wiringpi-latest.deb )
-        if GPIO.input(streamCapture) :
-                if fileDate == "" :
-                        fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                        fileNum = 0
+        #if GPIO.input(streamCapture) :
+        #        if fileDate == "" :
+        #                fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+        #                fileNum = 0
 
-                fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
-                fileNum = fileNum + 1
-                pygame.image.save(lcd, fileName)
+        #        fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
+        #        fileNum = fileNum + 1
+        #        pygame.image.save(lcd, fileName)
 
-        if not GPIO.input(streamCapture) and fileDate != "" :
-                fileDate = ""
-                print("frames captured:",fileNum)
+        #if not GPIO.input(streamCapture) and fileDate != "" :
+        #        fileDate = ""
+        #        print("frames captured:",fileNum)
 
         # add menu overlay
         if menuDisplay :
@@ -432,6 +445,11 @@ while(running):
                 textPos = MINnum.get_rect(center=MINnumPos.center)
                 lcd.blit(MINnum,textPos)
 
+                AVGf = AVGtemp*1.8 + 32
+                AVGnum = font.render('%d'%AVGf, True, WHITE)
+                textPos = AVGnum.get_rect(center=AVGnumPos.center)
+                lcd.blit(AVGnum, textPos)
+
                 lcd.blit(menu,(0,0))
 
         # display
@@ -440,4 +458,4 @@ while(running):
 
 cam.stop()
 pygame.quit()
-GPIO.cleanup()
+#GPIO.cleanup()
