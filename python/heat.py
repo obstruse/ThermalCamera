@@ -77,27 +77,48 @@ MAXTEMP = (100 - 32) / 1.8
 pygame.camera.init()
 cam = pygame.camera.Camera(videoDev,(width, height))  # actual camera resolution may be different
 cam.start()
-
+(width,height) = cam.get_size()
+print(cam.get_size())
 
 # create surfaces
 # display surface
 lcd = pygame.display.set_mode((width,height))
 lcdRect = lcd.get_rect()
 
-# heat surface
+# heat surface and sensor temperature index
 heat = pygame.surface.Surface((32,24))
+tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
+#tIndex = np.rot90(tIndex,3)  # don't rotate? thiat's interesting...
+tIndex = np.flip(tIndex,0)
+tCenter = (0,0)  # center of the scaled heat image before offset
+tMag = 1
 
 # camera edge detect overlay surface
-overlay = pygame.surface.Surface(cam.get_size())      # match size to camera resolution
+overlay = pygame.surface.Surface((width,height))      # match size to camera resolution
 overlay.set_colorkey((0,0,0))
-print(cam.get_size())
 
 # menu surface
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
 
+spot = 0
 
 #utility functions
+def xyTsensor(xy):
+    offset = np.subtract(xy, lcdRect.center)
+    #xyT = np.divide(np.add(offset,tCenter),(tMag,tMag))
+    xyA = np.add(offset,tCenter)
+    xyT = np.divide(xyA,(tMag,tMag))
+    #print(f"{lcdRect.center} {xy} --- {offset} --- {xyA} {xyT}")
+    xT = int(xyT[0])
+    yT = int(xyT[1])
+
+    #print(f"xT,yT: {(xT,yT)}   x,y: {xy}")
+    #print(f"    tSensor: {tIndex[xT][yT]}") 
+    global spot
+    spot = tIndex[xT][yT]
+     
+       
 def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
 
@@ -165,7 +186,8 @@ AVGnumPos = AVGnum.get_rect(center=(width-30,270))
 
 #how many color values we can have
 COLORDEPTH = 1024
-colormap = [[0] * COLORDEPTH for _ in range(1)] * 4
+#colormap = [[0] * COLORDEPTH for _ in range(1)] * 4
+colormap = [None] * 4
 
 # method 1
 # ... gradient
@@ -211,6 +233,7 @@ imageCapture = False
 
 # Field of View and Scale
 imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+print(f"imageScale: {imageScale}")
 
 # heat margins after scaling. Only used for wide heat images (imageScale < 1).
 # keep edges of scaled heat image outside display boundaries after offsets applied; offset cam image if necessary
@@ -240,6 +263,8 @@ while(running):
                 if (event.type == MOUSEBUTTONUP):
                         if menuDisplay :
                                 pos = pygame.mouse.get_pos()
+                                print(f"pos: {pos}")
+                                xyTsensor(pos)
                                 if menuMaxPlus.collidepoint(pos):
                                         MAXTEMP+=1
                                         if MAXTEMP > 80 :
@@ -352,21 +377,55 @@ while(running):
                 except ValueError:
                     continue
 
+                print(temps[spot])
+                temps[spot] = 99
+                
+                #right
+                temps[384] = 99
+                temps[417] = 99
+                temps[450] = 99
+
+                temps[676] = 99
+
+                #top
+                temps[15] = 99
+                temps[48] = 99
+                temps[81] = 99
+
+                temps[114] = 99
+
+                #left
+                temps[415] = 99
+                temps[446] = 99
+                temps[477] = 99
+
+                #print(temps[319])
+
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
 
+                #print(f"{temps[0]:.2f} {temps[744]:.2f} {temps[23]:.2f} {temps[767]:.2f}")
+                
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
                 # scale up if necessary to match camera
                 if imageScale < 1.0 and heatDisplay != 3:
                         heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
+                        tCenter = heatImage.get_rect().center
+                        tMag = (width/imageScale)/32
                         heatRect = heatImage.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(heatRect,heatOffsetX,heatOffsetY)
                 else:
-                        # show heat, full scale
-                        heatImage = pygame.transform.smoothscale(heat, (width,height))
+                        # show heat, full width
+                        # since the aspect ratio is probably not the same as the display,
+                        # the height will be truncated or padded 
+                        heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
+                        tCenter = heatImage.get_rect().center
+                        tMag = width/32
+                        #print(f"Toffset: {Toffset} Tmag: {Tmag:.2f}")
                         heatRect = heatImage.get_rect(center=lcdRect.center)
+                        #print(f"Mag: {width/32} Offset: {np.subtract()}")
 
                 lcd.blit(heatImage,heatRect)
 
@@ -379,6 +438,9 @@ while(running):
                         if imageScale > 1.0 :
                                 overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
                         else:
+                                # show camera, full width
+                                # the aspect ratio is the same as display,
+                                # so it shows the full frame
                                 overlay2 = pygame.transform.scale(overlay,(width,height))
 
                         overlay2Rect = overlay2.get_rect(center=lcdRect.center)
