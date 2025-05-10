@@ -3,8 +3,15 @@
 import sys
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-
 import adafruit_mlx90640
+class MLX(adafruit_mlx90640.MLX90640):
+    def data_ready(self):
+        statusRegister = [0]
+    
+        self._I2CReadWords(0x8000, statusRegister)
+        dataReady = statusRegister[0] & 0x0008
+
+        return dataReady    
 
 import pygame
 import pygame.camera
@@ -62,8 +69,14 @@ BLACK = (0,0,0)
 
 # initialize the sensor
 mlx = adafruit_mlx90640.MLX90640(i2c)
+#mlx = MLX(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
+# refresh rate for the 'subpage'.  Each frame of heat data requires two subpage reads,
+# so the frame rate is half the RefreshRate.
+# The highest refresh rate for 100kHz I2C is 4Hz, or 2 frames/sec.
+# 1mHz I2C will work at 32Hz, or 16 frames/sec
 #mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_8_HZ
 mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
 
 # initial low range of the sensor (this will be blue on the screen)
@@ -101,23 +114,22 @@ overlay.set_colorkey((0,0,0))
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
 
-spot = 0
-
 #utility functions
 def xyTsensor(xy):
     offset = np.subtract(xy, lcdRect.center)
     #xyT = np.divide(np.add(offset,tCenter),(tMag,tMag))
     xyA = np.add(offset,tCenter)
     xyT = np.divide(xyA,(tMag,tMag))
-    #print(f"{lcdRect.center} {xy} --- {offset} --- {xyA} {xyT}")
     xT = int(xyT[0])
     yT = int(xyT[1])
 
     #print(f"xT,yT: {(xT,yT)}   x,y: {xy}")
     #print(f"    tSensor: {tIndex[xT][yT]}") 
-    global spot
-    spot = tIndex[xT][yT]
-     
+    #global spot
+    return tIndex[xT][yT]
+
+def C2F(c):
+    return (c * 9.0/5.0) + 32.0
        
 def constrain(val, min_val, max_val):
     return min(max_val, max(min_val, val))
@@ -225,6 +237,10 @@ fileNum = 0
 fileDate = ""
 
 temps = [0] * 768
+AVGspots = 2
+AVGdepth = 6    # the heat noise looks like 2.5sec cycle, so 6 to get 3 seconds smoothing
+AVGindex = 0
+AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
 # flags
 menuDisplay = False 
@@ -261,10 +277,14 @@ while(running):
         # scan events
         for event in pygame.event.get():
                 if (event.type == MOUSEBUTTONUP):
-                        if menuDisplay :
-                                pos = pygame.mouse.get_pos()
-                                print(f"pos: {pos}")
-                                xyTsensor(pos)
+                        pos = event.pos
+                        if event.button == 2:
+                            AVG[1]['spot'] = xyTsensor(pos)
+                            AVG[1]['mark'] = 0
+                        if event.button == 3:
+                            AVG[0]['spot'] = xyTsensor(pos)
+                            AVG[0]['mark'] = 99
+                        if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
                                         MAXTEMP+=1
                                         if MAXTEMP > 80 :
@@ -303,7 +323,7 @@ while(running):
                                        MAXTEMP = AVGtemp + (2 / 1.8)
                                        MINTEMP = AVGtemp - (2 / 1.8)
 
-                        else :
+                        elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
 
                 if (event.type == KEYUP) :
@@ -377,40 +397,24 @@ while(running):
                 except ValueError:
                     continue
 
-                print(temps[spot])
-                temps[spot] = 99
-                
-                #right
-                temps[384] = 99
-                temps[417] = 99
-                temps[450] = 99
-
-                temps[676] = 99
-
-                #top
-                temps[15] = 99
-                temps[48] = 99
-                temps[81] = 99
-
-                temps[114] = 99
-
-                #left
-                temps[415] = 99
-                temps[446] = 99
-                temps[477] = 99
-
-                #print(temps[319])
+                # print averages
+                AVGindex = (AVGindex + 1) % AVGdepth
+                for A in AVG:
+                    if A['spot']:
+                        A['raw'][AVGindex] = temps[A['spot']]
+                        temps[A['spot']] = A['mark']
+                        A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                print(*[A['print'] for A in AVG])
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
 
-                #print(f"{temps[0]:.2f} {temps[744]:.2f} {temps[23]:.2f} {temps[767]:.2f}")
-                
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
                 # scale up if necessary to match camera
                 if imageScale < 1.0 and heatDisplay != 3:
+                        # TODO:  this isn't right, but I don't need it yet, so...
                         heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
                         tCenter = heatImage.get_rect().center
                         tMag = (width/imageScale)/32
@@ -423,10 +427,8 @@ while(running):
                         heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
                         tCenter = heatImage.get_rect().center
                         tMag = width/32
-                        #print(f"Toffset: {Toffset} Tmag: {Tmag:.2f}")
                         heatRect = heatImage.get_rect(center=lcdRect.center)
-                        #print(f"Mag: {width/32} Offset: {np.subtract()}")
-
+                        
                 lcd.blit(heatImage,heatRect)
 
                 # add camera
