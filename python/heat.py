@@ -24,8 +24,8 @@ import numpy as np
 
 from colour import Color
 
-import board
-import busio
+#import board
+#import busio
 
 #import RPi.GPIO as GPIO
 
@@ -42,7 +42,7 @@ offsetY = config.getint('ThermalCamera','offsetY',fallback=0)
 width = config.getint('ThermalCamera','width',fallback=320)
 height = config.getint('ThermalCamera','height',fallback=240)
 camFOV = config.getint('ThermalCamera','camFOV',fallback=35)
-heatFOV = config.getint('ThermalCamera','heatFOV',fallback=40)
+heatFOV = config.getint('ThermalCamera','heatFOV',fallback=45)
 theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 
@@ -353,24 +353,30 @@ while(running):
 
                 if (event == OFFSETS) :
                         # keep the offset scaled heat image within screen, move camera if necessary
-                        heatOffsetX = offsetX
-                        camOffsetX  = 0
-                        if ( heatOffsetX > marginX ) :
-                            heatOffsetX = marginX
-                            camOffsetX  = offsetX - marginX
-                        if ( heatOffsetX < -marginX ) :
-                            heatOffsetX = -marginX
-                            camOffsetX  = offsetX + marginX
-
-                        heatOffsetY = offsetY
-                        camOffsetY = 0
-                        if ( heatOffsetY > marginY ) :
-                            heatOffsetY = marginY
-                            camOffsetY  = offsetY - marginY
-                        if ( heatOffsetY < -marginY ) :
-                            heatOffsetY = -marginY
-                            camOffsetY  = offsetY + marginY
-
+                        # changed my mind:  move the camera image, don't move the heat image
+                        #heatOffsetX = offsetX
+                        #camOffsetX  = 0
+                        #if ( heatOffsetX > marginX ) :
+                        #    heatOffsetX = marginX
+                        #    camOffsetX  = offsetX - marginX
+                        #if ( heatOffsetX < -marginX ) :
+                        #    heatOffsetX = -marginX
+                        #    camOffsetX  = offsetX + marginX
+                        #
+                        #
+                        #heatOffsetY = offsetY
+                        #camOffsetY = 0
+                        #if ( heatOffsetY > marginY ) :
+                        #    heatOffsetY = marginY
+                        #    camOffsetY  = offsetY - marginY
+                        #if ( heatOffsetY < -marginY ) :
+                        #    heatOffsetY = -marginY
+                        #    camOffsetY  = offsetY + marginY
+                        heatOffsetX = 0
+                        heatOffsetY = 0
+                        camOffsetX = offsetX
+                        camOffsetY = offsetY
+                        # need to clean this up later (if it works OK)
 
                             
                             
@@ -413,22 +419,34 @@ while(running):
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
                 # scale up if necessary to match camera
-                if imageScale < 1.0 and heatDisplay != 3:
-                        # TODO:  this isn't right, but I don't need it yet, so...
-                        heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
-                        tCenter = heatImage.get_rect().center
-                        tMag = (width/imageScale)/32
-                        heatRect = heatImage.get_rect(center=lcdRect.center)
-                        pygame.Rect.move_ip(heatRect,heatOffsetX,heatOffsetY)
-                else:
-                        # show heat, full width
-                        # since the aspect ratio is probably not the same as the display,
-                        # the height will be truncated or padded 
-                        heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
-                        tCenter = heatImage.get_rect().center
-                        tMag = width/32
-                        heatRect = heatImage.get_rect(center=lcdRect.center)
-                        
+                # ...changed my mind.  There's so little resolution to the heat image, scale up looks worse.
+                # So, is it a video camera with heat overlay, or heat camera with video overlay?
+                # I say it's a heat camera, so primarily is should show as much of the heat image as possible.
+                # ... if that's so, shouldn't the display aspect match the heat image and not the video image?
+                # TODO: match display aspect ratio to heat image?
+
+                # Scale heat image to fit screen.  Pad/truncate verticle is needed
+                #if imageScale < 1.0 and heatDisplay != 3:
+                #        # TODO:  this isn't right, but I don't need it yet, so...
+                #        heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
+                #        tCenter = heatImage.get_rect().center
+                #        tMag = (width/imageScale)/32
+                #        heatRect = heatImage.get_rect(center=lcdRect.center)
+                #        pygame.Rect.move_ip(heatRect,heatOffsetX,heatOffsetY)
+                #else:
+                #        # show heat, full width
+                #        # since the aspect ratio is probably not the same as the display,
+                #        # the height will be truncated or padded 
+                #        heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
+                #        tCenter = heatImage.get_rect().center
+                #        tMag = width/32
+                #        heatRect = heatImage.get_rect(center=lcdRect.center)
+
+                heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
+                tCenter = heatImage.get_rect().center
+                tMag = width/32
+                heatRect = heatImage.get_rect(center=lcdRect.center)
+
                 lcd.blit(heatImage,heatRect)
 
                 # add camera
@@ -437,14 +455,17 @@ while(running):
                         camImage = pygame.transform.laplacian(cam.get_image())
                         overlay.fill((0,0,0))
                         pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-                        if imageScale > 1.0 :
-                                overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
-                        else:
-                                # show camera, full width
-                                # the aspect ratio is the same as display,
-                                # so it shows the full frame
-                                overlay2 = pygame.transform.scale(overlay,(width,height))
+                        # ...changed my mind.
+                        # Scale camera to fit heat image
+                        #if imageScale > 1.0 :
+                        #        overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
+                        #else:
+                        #        # show camera, full width
+                        #        # the aspect ratio is the same as display,
+                        #        # so it shows the full frame
+                        #        overlay2 = pygame.transform.scale(overlay,(width,height))
 
+                        overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
                         overlay2Rect = overlay2.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(overlay2Rect,-camOffsetX,-camOffsetY)
                         overlay2.set_colorkey((0,0,0))
@@ -452,11 +473,11 @@ while(running):
 
                 if heatDisplay == 2 :
                         # heat display with alpha camera overlay
-                        if imageScale > 1.0 :
-                                camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
-                        else:
-                                camImage = pygame.transform.scale(cam.get_image(), (width,height))
-
+                        #if imageScale > 1.0 :
+                        #        camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+                        #else:
+                        #        camImage = pygame.transform.scale(cam.get_image(), (width,height))
+                        camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
                         camRect = camImage.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
                         camImage.set_alpha(100)
