@@ -24,9 +24,6 @@ import numpy as np
 
 from colour import Color
 
-#import board
-#import busio
-
 #import RPi.GPIO as GPIO
 
 from configparser import ConfigParser
@@ -41,19 +38,14 @@ offsetX = config.getint('ThermalCamera','offsetX',fallback=0)
 offsetY = config.getint('ThermalCamera','offsetY',fallback=0)
 width = config.getint('ThermalCamera','width',fallback=320)
 height = config.getint('ThermalCamera','height',fallback=240)
-camFOV = config.getint('ThermalCamera','camFOV',fallback=35)
+camFOV = config.getint('ThermalCamera','camFOV',fallback=45)
 heatFOV = config.getint('ThermalCamera','heatFOV',fallback=45)
 theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
-
-import i2cHDMI
-# MUST set I2C freq to 1MHz in /boot/config.txt
-#i2c = busio.I2C(board.SCL, board.SDA)
-i2c = i2cHDMI.i2cHDMI(4)
+SMB = config.getint('ThermalCamera','SMB',fallback=-1)
 
 #GPIO.setmode(GPIO.BCM)
 #GPIO.setwarnings(False)
-
 
 # initialize display environment
 pygame.display.init()
@@ -66,8 +58,22 @@ font = pygame.font.Font(None, 30)
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
-
 # initialize the sensor
+if SMB >= 0 :
+    import i2cSMB as i2cSMB
+    i2c = i2cSMB.i2cSMB(SMB)
+    refresh = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
+else:
+    try:
+        import board
+        import busio
+        # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
+        i2c = busio.I2C(board.SCL, board.SDA)
+        refresh = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
+    except:
+        print("No I2C bus found")
+        sys.exit()
+
 mlx = adafruit_mlx90640.MLX90640(i2c)
 #mlx = MLX(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
@@ -75,9 +81,7 @@ print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
 # so the frame rate is half the RefreshRate.
 # The highest refresh rate for 100kHz I2C is 4Hz, or 2 frames/sec.
 # 1mHz I2C will work at 32Hz, or 16 frames/sec
-#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
-#mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_8_HZ
-mlx.refresh_rate = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
+mlx.refresh_rate = refresh
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -240,6 +244,7 @@ temps = [0] * 768
 AVGspots = 2
 AVGdepth = 6    # the heat noise looks like 2.5sec cycle, so 6 to get 3 seconds smoothing
 AVGindex = 0
+AVGprint = False
 AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
 # flags
@@ -343,11 +348,21 @@ while(running):
                         if (event.key == K_UP) :
                                 offsetY -= 1
                                 pygame.event.post(OFFSETS)
-                        
+
+                        if event.key == K_KP_PLUS :
+                               camFOV += 1
+                               imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+                               print(f"camFOV: {camFOV}")
+                        if event.key == K_KP_MINUS :
+                               camFOV -= 1
+                               imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+                               print(f"camFOV: {camFOV}")
+                                                              
                         if (event.key == K_w) :
                                 # write config
                                 config.set('ThermalCamera', 'offsetX',str(offsetX))
                                 config.set('ThermalCamera', 'offsetY',str(offsetY))
+                                config.set('ThermalCamera', 'camFOV',str(camFOV))
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
 
@@ -407,10 +422,12 @@ while(running):
                 AVGindex = (AVGindex + 1) % AVGdepth
                 for A in AVG:
                     if A['spot']:
+                        AVGprint = True
                         A['raw'][AVGindex] = temps[A['spot']]
                         temps[A['spot']] = A['mark']
                         A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                print(*[A['print'] for A in AVG])
+                if AVGprint :
+                       print(*[A['print'] for A in AVG])
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')

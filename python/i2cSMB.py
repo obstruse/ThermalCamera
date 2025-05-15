@@ -4,7 +4,7 @@ from smbus2 import SMBus, i2c_msg
 #import board
 #import busio
 
-class i2cHDMI(SMBus):
+class i2cSMB(SMBus):
     def try_lock(self):
         return True
 
