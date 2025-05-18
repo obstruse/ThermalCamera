@@ -3,6 +3,7 @@
 from smbus2 import SMBus, i2c_msg
 #import board
 #import busio
+import time
 
 class i2cSMB(SMBus):
     def try_lock(self):
@@ -37,6 +38,7 @@ class i2cSMB(SMBus):
 
     def writeto_then_readfrom(self, addr, out_buffer, in_buffer, *, out_start=0, out_end=None, in_start=0, in_end=None):
         MAX_CHUNK = 500  # adjust as needed
+        I2Cstart = time.time()
 
         if out_end is None:
             out_end = len(out_buffer)
@@ -69,6 +71,8 @@ class i2cSMB(SMBus):
 
             offset += chunk_size
             remaining -= chunk_size
+
+        #print(f"I2C bits/sec: {(total_bytes * 8)/(time.time()-I2Cstart)}")
 
 
 

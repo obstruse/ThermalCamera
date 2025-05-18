@@ -65,13 +65,14 @@ if SMB >= 0 :
     refresh = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
 else:
     try:
+        import RPi.GPIO as GPIO
         import board
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = adafruit_mlx90640.RefreshRate.REFRESH_32_HZ
-    except:
-        print("No I2C bus found")
+        refresh = adafruit_mlx90640.RefreshRate.REFRESH_8_HZ
+    except Exception as e:
+        print(f"No I2C bus found: {e}")
         sys.exit()
 
 mlx = adafruit_mlx90640.MLX90640(i2c)
@@ -249,7 +250,7 @@ AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(A
 
 # flags
 menuDisplay = False 
-heatDisplay = 1
+heatDisplay = 3
 imageCapture = False
 
 # Field of View and Scale
@@ -274,10 +275,16 @@ OFFSETS = pygame.event.Event(pygame.USEREVENT)
 
 # trigger offset calculation
 pygame.event.post(OFFSETS)
-        
+
+timeStart = time.time()
+frameStart = time.time()
+
 # loop...
 running = True
 while(running):
+
+        print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
+        frameStart = time.time()
 
         # scan events
         for event in pygame.event.get():
@@ -401,13 +408,15 @@ while(running):
                 # the pygame camera buffering causes the camera image to lag beind the heat image
                 # this extra get_image helps.  
                 # There will be another camera image available when heat has processed
-                if (cam.query_image() ) :
-                    cam.get_image()
+                ####if (cam.query_image() ) :
+                ####    cam.get_image()
 
                 # heatDisplay == 0      camera only
                 # heatDisplay == 1      heat + edge
                 # heatDisplay == 2      heat + camera
                 # heatDisplay == 3      heat only
+
+                print(f"process ms: {int((time.time() - timeStart) * 1000)}")
 
                 # read temperatures from sensor
                 try:
@@ -417,6 +426,8 @@ while(running):
                     sys.exit(1)
                 except ValueError:
                     continue
+                
+                timeStart = time.time()
 
                 # print averages
                 AVGindex = (AVGindex + 1) % AVGdepth
