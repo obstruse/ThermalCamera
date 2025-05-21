@@ -89,6 +89,7 @@ class MLX90640:  # pylint: disable=too-many-instance-attributes
     outlierPixels = []
     cpKta = 0
     cpKv = 0
+    mlx90640Frame = [0] * 834
 
     def __init__(self, i2c_bus: I2C, address: int = 0x33) -> None:
         self.i2c_device = I2CDevice(i2c_bus, address)
@@ -126,15 +127,15 @@ class MLX90640:  # pylint: disable=too-many-instance-attributes
         into the 768-element array passed in!"""
         emissivity = 0.95
         tr = 23.15
-        mlx90640Frame = [0] * 834
+        #mlx90640Frame = [0] * 834
 
-        for _ in range(2):
-            status = self._GetFrameData(mlx90640Frame)
-            if status < 0:
-                raise RuntimeError("Frame data error")
-            # For a MLX90640 in the open air the shift is -8 degC.
-            tr = self._GetTa(mlx90640Frame) - OPENAIR_TA_SHIFT
-            self._CalculateTo(mlx90640Frame, emissivity, tr, framebuf)
+        #for _ in range(2):
+        status = self._GetFrameData(self.mlx90640Frame)
+        if status < 0:
+            raise RuntimeError("Frame data error")
+        # For a MLX90640 in the open air the shift is -8 degC.
+        tr = self._GetTa(self.mlx90640Frame) - OPENAIR_TA_SHIFT
+        self._CalculateTo(self.mlx90640Frame, emissivity, tr, framebuf)
 
     def _GetFrameData(self, frameData: List[int]) -> int:
         dataReady = 0
@@ -142,24 +143,47 @@ class MLX90640:  # pylint: disable=too-many-instance-attributes
         statusRegister = [0]
         controlRegister = [0]
 
-        timeStart = time.time()
-        while dataReady == 0:
-            self._I2CReadWords(0x8000, statusRegister)
-            dataReady = statusRegister[0] & 0x0008
-            # print("ready status: 0x%x" % dataReady)
+        #timeStart = time.time()
+        #while dataReady == 0:
+        # if nothing ready, just return with data unchanged
+        self._I2CReadWords(0x8000, statusRegister)
+        if statusRegister[0] & 0x0008 == 0:
+            print("...skip...")
+            return frameData[833]
+        
+        #    dataReady = statusRegister[0] & 0x0008
+        #    # print("ready status: 0x%x" % dataReady)
         #print(f"        dead MS: {int((time.time() - timeStart)* 1000)}")
 
         timeStart = time.time()
-        while (dataReady != 0) and (cnt < 4):
-            self._I2CWriteWord(0x8000, 0x0030)
-            # print("Read frame", cnt)
-            self._I2CReadWords(0x0400, frameData, end=832)
-
+        # subframe ready. write protect data
+        self._I2CWriteWord(0x8000, 0x0000)
+        frameStatus = 0
+        while (frameStatus == 0 and cnt < 4):
             self._I2CReadWords(0x8000, statusRegister)
-            print(f"reg 0x8000: {statusRegister[0]:x}")
-            dataReady = statusRegister[0] & 0x0008
-            # print("frame ready: 0x%x" % dataReady)
-            cnt += 1
+            if statusRegister[0] & 0x0008 != 0:
+                # read subframe
+                self._I2CReadWords(0x0400, frameData, end=832)
+                # update frameStatus
+                self._I2CReadWords(0x8000, statusRegister)
+                frameStatus = statusRegister[0] & 0x0007
+                cnt += 1
+                # release write protect
+                self._I2CWriteWord(0x8000, 0x0010)
+            else:
+                print("not ready")
+
+
+        #while (dataReady != 0) and (cnt < 4):
+        #    self._I2CWriteWord(0x8000, 0x0030)
+        #    # print("Read frame", cnt)
+        #    self._I2CReadWords(0x0400, frameData, end=832)
+
+        #    self._I2CReadWords(0x8000, statusRegister)
+        #    print(f"reg 0x8000: {statusRegister[0]:x}")
+        #    dataReady = statusRegister[0] & 0x0008
+        #    # print("frame ready: 0x%x" % dataReady)
+        #    cnt += 1
 
         if cnt > 3:
             #raise RuntimeError("Too many retries")
@@ -168,7 +192,7 @@ class MLX90640:  # pylint: disable=too-many-instance-attributes
         self._I2CReadWords(0x800D, controlRegister)
         frameData[832] = controlRegister[0]
         frameData[833] = statusRegister[0] & 0x0001
-        print(f"                read MS: {int((time.time() - timeStart)* 1000)} cnt: {cnt} bps: {int((832*2*9)/(time.time() - timeStart))}")
+        print(f"                read MS: {int((time.time() - timeStart)* 1000)} cnt: {cnt} bps: {int((cnt * 832*2*9)/(time.time() - timeStart))}")
 
         return frameData[833]
 
