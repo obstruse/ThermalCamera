@@ -38,6 +38,8 @@ offsetX = config.getint('ThermalCamera','offsetX',fallback=0)
 offsetY = config.getint('ThermalCamera','offsetY',fallback=0)
 width = config.getint('ThermalCamera','width',fallback=320)
 height = config.getint('ThermalCamera','height',fallback=240)
+camWidth = config.getint('ThermalCamera','camWidth',fallback=320)
+camHeight = config.getint('ThermalCamera','camHeight',fallback=240)
 camFOV = config.getint('ThermalCamera','camFOV',fallback=45)
 heatFOV = config.getint('ThermalCamera','heatFOV',fallback=45)
 theme = config.getint('ThermalCamera','theme',fallback=1)
@@ -93,33 +95,50 @@ MAXTEMP = (100 - 32) / 1.8
 
 # initialize camera
 pygame.camera.init()
-cam = pygame.camera.Camera(videoDev,(width, height))  # actual camera resolution may be different
+cam = pygame.camera.Camera(videoDev,(camWidth, camHeight))  # actual camera resolution may be different
 cam.start()
-(width,height) = cam.get_size()
+(camWidth,camHeight) = cam.get_size()
 print(cam.get_size())
 
 # create surfaces
 # display surface
 lcd = pygame.display.set_mode((width,height))
+#lcd = pygame.display.set_mode((width,height), pygame.FULLSCREEN)
 lcdRect = lcd.get_rect()
 
 # heat surface and sensor temperature index
 heat = pygame.surface.Surface((32,24))
 tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
-#tIndex = np.rot90(tIndex,3)  # don't rotate? thiat's interesting...
 tIndex = np.flip(tIndex,0)
 tCenter = (0,0)  # center of the scaled heat image before offset
 tMag = 1
 
 # camera edge detect overlay surface
-overlay = pygame.surface.Surface((width,height))      # match size to camera resolution
-overlay.set_colorkey((0,0,0))
+#overlay = pygame.surface.Surface((width,height))      # match size to camera resolution
+#overlay.set_colorkey((0,0,0))
 
 # menu surface
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
 
 #utility functions
+def setCameraFOV(FOV) :
+    global imageScale
+    global overlay
+
+    # Field of View and Scale
+    imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+    print(f"imageScale: {imageScale}")
+
+    # camera edge detect overlay surface
+    overlay = pygame.surface.Surface((int(width*imageScale), int(width*(camHeight/camWidth)*imageScale)))      # match size to camera resolution
+    overlay.set_colorkey((0,0,0))
+
+def getCameraScaled(scale=None):
+    if scale == None:
+        scale = imageScale
+    return pygame.transform.scale(cam.get_image(),(int(width*scale), int(width*(camHeight/camWidth)*scale)))
+
 def xyTsensor(xy):
     offset = np.subtract(xy, lcdRect.center)
     #xyT = np.divide(np.add(offset,tCenter),(tMag,tMag))
@@ -254,8 +273,11 @@ heatDisplay = 3
 imageCapture = False
 
 # Field of View and Scale
-imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-print(f"imageScale: {imageScale}")
+#imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+#print(f"imageScale: {imageScale}")
+
+imageScale = 1.0
+setCameraFOV(camFOV)
 
 # heat margins after scaling. Only used for wide heat images (imageScale < 1).
 # keep edges of scaled heat image outside display boundaries after offsets applied; offset cam image if necessary
@@ -358,11 +380,13 @@ while(running):
 
                         if event.key == K_KP_PLUS :
                                camFOV += 1
-                               imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+                               setCameraFOV(camFOV)
+                               #imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
                                print(f"camFOV: {camFOV}")
                         if event.key == K_KP_MINUS :
                                camFOV -= 1
-                               imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
+                               setCameraFOV(camFOV)
+                               #imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
                                print(f"camFOV: {camFOV}")
                                                               
                         if (event.key == K_w) :
@@ -408,15 +432,15 @@ while(running):
                 # the pygame camera buffering causes the camera image to lag beind the heat image
                 # this extra get_image helps.  
                 # There will be another camera image available when heat has processed
-                ####if (cam.query_image() ) :
-                ####    cam.get_image()
+                if (cam.query_image() ) :
+                    cam.get_image()
 
                 # heatDisplay == 0      camera only
                 # heatDisplay == 1      heat + edge
                 # heatDisplay == 2      heat + camera
                 # heatDisplay == 3      heat only
 
-                print(f"process ms: {int((time.time() - timeStart) * 1000)}")
+                #print(f"process ms: {int((time.time() - timeStart) * 1000)}")
 
                 # read temperatures from sensor
                 try:
@@ -480,7 +504,8 @@ while(running):
                 # add camera
                 if heatDisplay == 1 :
                         # heat display with edge detect camera overlay
-                        camImage = pygame.transform.laplacian(cam.get_image())
+                        #camImage = pygame.transform.laplacian(cam.get_image())
+                        camImage = pygame.transform.laplacian(getCameraScaled())
                         overlay.fill((0,0,0))
                         pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
                         # ...changed my mind.
@@ -493,11 +518,11 @@ while(running):
                         #        # so it shows the full frame
                         #        overlay2 = pygame.transform.scale(overlay,(width,height))
 
-                        overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
-                        overlay2Rect = overlay2.get_rect(center=lcdRect.center)
-                        pygame.Rect.move_ip(overlay2Rect,-camOffsetX,-camOffsetY)
-                        overlay2.set_colorkey((0,0,0))
-                        lcd.blit(overlay2,overlay2Rect)
+                        #overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
+                        overlayRect = overlay.get_rect(center=lcdRect.center)
+                        pygame.Rect.move_ip(overlayRect,-camOffsetX,-camOffsetY)
+                        overlay.set_colorkey((0,0,0))
+                        lcd.blit(overlay,overlayRect)
 
                 if heatDisplay == 2 :
                         # heat display with alpha camera overlay
@@ -505,7 +530,8 @@ while(running):
                         #        camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
                         #else:
                         #        camImage = pygame.transform.scale(cam.get_image(), (width,height))
-                        camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+                        #camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
+                        camImage = getCameraScaled()
                         camRect = camImage.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
                         camImage.set_alpha(100)
@@ -513,8 +539,9 @@ while(running):
 
         else:
                 # show camera, full scale, no heat
-                camImage = pygame.transform.scale(cam.get_image(), (width,height))
-                lcd.blit(camImage,(0,0))
+                #camImage = pygame.transform.scale(cam.get_image(), (width,height))
+                #lcd.blit(camImage,(0,0))
+                lcd.blit(getCameraScaled(1.0),(0,0))
 
         # capture single frame to file, without menu overlay
         if imageCapture :
