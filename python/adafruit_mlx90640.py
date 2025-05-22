@@ -143,35 +143,47 @@ class MLX90640:  # pylint: disable=too-many-instance-attributes
         statusRegister = [0]
         controlRegister = [0]
 
-        #timeStart = time.time()
-        #while dataReady == 0:
+        # clear data ready
+        #self._I2CWriteWord(0x8000, 0x0010)
+
         # if nothing ready, just return with data unchanged
         self._I2CReadWords(0x8000, statusRegister)
+        print(f"status: {statusRegister[0]:019_b}")
         if statusRegister[0] & 0x0008 == 0:
             print("...skip...")
             return frameData[833]
-        
-        #    dataReady = statusRegister[0] & 0x0008
-        #    # print("ready status: 0x%x" % dataReady)
-        #print(f"        dead MS: {int((time.time() - timeStart)* 1000)}")
 
         timeStart = time.time()
         # subframe ready. write protect data
-        self._I2CWriteWord(0x8000, 0x0000)
-        frameStatus = 0
-        while (frameStatus == 0 and cnt < 4):
+        #self._I2CWriteWord(0x8000, 0x0000)
+
+        # read subpage 0
+        self._I2CReadWords(0x0400, frameData, end=832)
+        self._I2CReadWords(0x8000, statusRegister)
+        print(f"status after read #0: {statusRegister[0]:019_b}")
+
+        # clear data ready
+        self._I2CWriteWord(0x8000, 0x0010)
+
+        # wait for data ready
+        dataReady = 0
+        while dataReady == 0:
+            time.sleep(0.002)
             self._I2CReadWords(0x8000, statusRegister)
-            if statusRegister[0] & 0x0008 != 0:
-                # read subframe
-                self._I2CReadWords(0x0400, frameData, end=832)
-                # update frameStatus
-                self._I2CReadWords(0x8000, statusRegister)
-                frameStatus = statusRegister[0] & 0x0007
-                cnt += 1
-                # release write protect
-                self._I2CWriteWord(0x8000, 0x0010)
-            else:
-                print("not ready")
+            print(f"status during delay: {statusRegister[0]:019_b}")
+            dataReady = statusRegister[0] & 0x0008
+
+        timeStart = time.time()
+        # subframe ready. write protect data
+        #self._I2CWriteWord(0x8000, 0x0000)
+
+        # read subpage 1
+        self._I2CReadWords(0x0400, frameData, end=832)
+        self._I2CReadWords(0x8000, statusRegister)
+        print(f"status after read #1: {statusRegister[0]:019_b}")
+
+        # clear data ready
+        self._I2CWriteWord(0x8000, 0x0010)
 
 
         #while (dataReady != 0) and (cnt < 4):
