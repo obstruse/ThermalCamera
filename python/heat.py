@@ -450,6 +450,10 @@ while(running):
                     sys.exit(1)
                 except ValueError:
                     continue
+                except OSError as err:
+                    print(f"\n\n{err}\n\n")
+                    continue
+
                 
                 timeStart = time.time()
 
