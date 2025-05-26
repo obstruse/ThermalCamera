@@ -1,22 +1,30 @@
 #!/usr/bin/env python
 
-import adafruit_mlx90640 as adafruit
+import  adafruit_mlx90640 as adafruit
+
 import time
 
-class MLX90640(adafruit.MLX90604):
+import struct
+import math
+import time
+from typing import List, Optional, Tuple, Union
+
+class MLX90640(adafruit.MLX90640):
+
     def getFrame(self, framebuf: List[int]) -> None:
         emissivity = 0.95
         tr = 23.15
-        mlx90640Frame = [0] * 834
 
-        dataReady = 0
-        cnt = 0
         statusRegister = [0]
         controlRegister = [0]
 
+        frameData = [0] * 834
+
         # wait for dataReady
-        while not (self._I2CReadWords(0x8000, statusRegister) & 0x0008) :
+        self._I2CReadWords(0x8000, statusRegister)
+        while not (statusRegister[0] & 0x0008) :
             time.sleep(0.001)
+            self._I2CReadWords(0x8000, statusRegister)
             
         # read frame
         timeStart = time.time()
@@ -27,12 +35,16 @@ class MLX90640(adafruit.MLX90604):
 
         self._I2CReadWords(0x800D, controlRegister)
         frameData[832] = controlRegister[0]
-        # hmmmmm....is this an issue?
         frameData[833] = statusRegister[0] & 0x0001
-        print(f"read MS: {int((time.time() - timeStart)* 1000)} bps: {int((832*2*9)/(time.time() - timeStart))}")
+        #print(f"read MS: {int((time.time() - timeStart)* 1000)} bps: {int((832*2*9)/(time.time() - timeStart))}")
 
         # For a MLX90640 in the open air the shift is -8 degC.
-        tr = self._GetTa(self.mlx90640Frame) - OPENAIR_TA_SHIFT
-        self._CalculateTo(self.mlx90640Frame, emissivity, tr, framebuf)
+        tr = self._GetTa(frameData) - OPENAIR_TA_SHIFT
+        # for each subpage in frameData
+        for i in [0,1] :
+            frameData[833] = i
+            self._CalculateTo(frameData, emissivity, tr, framebuf)
 
 
+RefreshRate = adafruit.RefreshRate
+OPENAIR_TA_SHIFT = adafruit.OPENAIR_TA_SHIFT

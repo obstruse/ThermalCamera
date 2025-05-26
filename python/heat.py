@@ -3,15 +3,7 @@
 import sys
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import adafruit_mlx90640
-class MLX(adafruit_mlx90640.MLX90640):
-    def data_ready(self):
-        statusRegister = [0]
-    
-        self._I2CReadWords(0x8000, statusRegister)
-        dataReady = statusRegister[0] & 0x0008
-
-        return dataReady    
+import MLX90640
 
 import pygame
 import pygame.camera
@@ -64,7 +56,7 @@ BLACK = (0,0,0)
 if SMB >= 0 :
     import i2cSMB as i2cSMB
     i2c = i2cSMB.i2cSMB(SMB)
-    refresh = adafruit_mlx90640.RefreshRate.REFRESH_4_HZ
+    refresh = MLX90640.RefreshRate.REFRESH_4_HZ
 else:
     try:
         import RPi.GPIO as GPIO
@@ -72,18 +64,17 @@ else:
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = adafruit_mlx90640.RefreshRate.REFRESH_8_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_64_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
-mlx = adafruit_mlx90640.MLX90640(i2c)
-#mlx = MLX(i2c)
+mlx = MLX90640.MLX90640(i2c)
 print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-# refresh rate for the 'subpage'.  Each frame of heat data requires two subpage reads,
-# so the frame rate is half the RefreshRate.
-# The highest refresh rate for 100kHz I2C is 4Hz, or 2 frames/sec.
-# 1mHz I2C will work at 32Hz, or 16 frames/sec
+
+# refresh rate for a 'subpage', half the pixels in the heat image changing
+# The highest refresh rate for 100kHz I2C is 4Hz
+# At 1mHz I2C you can use 32Hz refresh rate
 mlx.refresh_rate = refresh
 
 # initial low range of the sensor (this will be blue on the screen)
@@ -110,12 +101,10 @@ lcdRect = lcd.get_rect()
 heat = pygame.surface.Surface((32,24))
 tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
 tIndex = np.flip(tIndex,0)
-tCenter = (0,0)  # center of the scaled heat image before offset
+tCenter = (0,0)  # center of the heat image
 tMag = 1
 
-# camera edge detect overlay surface
-#overlay = pygame.surface.Surface((width,height))      # match size to camera resolution
-#overlay.set_colorkey((0,0,0))
+# camera edge detect overlay surface determined by setCamerFOV()
 
 # menu surface
 menu = pygame.surface.Surface((width, height))
@@ -131,7 +120,8 @@ def setCameraFOV(FOV) :
     print(f"imageScale: {imageScale}")
 
     # camera edge detect overlay surface
-    overlay = pygame.surface.Surface((int(width*imageScale), int(width*(camHeight/camWidth)*imageScale)))      # match size to camera resolution
+    # scaled to match display size and preserve aspect ratio
+    overlay = pygame.surface.Surface((int(width*imageScale), int(width*(camHeight/camWidth)*imageScale)))
     overlay.set_colorkey((0,0,0))
 
 def getCameraScaled(scale=None):
@@ -141,7 +131,6 @@ def getCameraScaled(scale=None):
 
 def xyTsensor(xy):
     offset = np.subtract(xy, lcdRect.center)
-    #xyT = np.divide(np.add(offset,tCenter),(tMag,tMag))
     xyA = np.add(offset,tCenter)
     xyT = np.divide(xyA,(tMag,tMag))
     xT = int(xyT[0])
@@ -149,7 +138,6 @@ def xyTsensor(xy):
 
     #print(f"xT,yT: {(xT,yT)}   x,y: {xy}")
     #print(f"    tSensor: {tIndex[xT][yT]}") 
-    #global spot
     return tIndex[xT][yT]
 
 def C2F(c):
@@ -221,13 +209,11 @@ AVGnum = font.render('999', True, WHITE)
 AVGnumPos = AVGnum.get_rect(center=(width-30,270))
 
 #how many color values we can have
-COLORDEPTH = 1024
-#colormap = [[0] * COLORDEPTH for _ in range(1)] * 4
+COLORDEPTH = 2048
 colormap = [None] * 4
 
 # method 1
 # ... gradient
-# the list of colors we can choose from
 heatmap = (
     (0.0, (0, 0, 0)),
     (0.20, (0, 0, 0.5)),
@@ -269,12 +255,8 @@ AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(A
 
 # flags
 menuDisplay = False 
-heatDisplay = 3
+heatDisplay = 1
 imageCapture = False
-
-# Field of View and Scale
-#imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-#print(f"imageScale: {imageScale}")
 
 imageScale = 1.0
 setCameraFOV(camFOV)
@@ -381,12 +363,10 @@ while(running):
                         if event.key == K_KP_PLUS :
                                camFOV += 1
                                setCameraFOV(camFOV)
-                               #imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
                                print(f"camFOV: {camFOV}")
                         if event.key == K_KP_MINUS :
                                camFOV -= 1
                                setCameraFOV(camFOV)
-                               #imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
                                print(f"camFOV: {camFOV}")
                                                               
                         if (event.key == K_w) :
@@ -440,8 +420,6 @@ while(running):
                 # heatDisplay == 2      heat + camera
                 # heatDisplay == 3      heat only
 
-                #print(f"process ms: {int((time.time() - timeStart) * 1000)}")
-
                 # read temperatures from sensor
                 try:
                     mlx.getFrame(temps)
@@ -451,7 +429,7 @@ while(running):
                 except ValueError:
                     continue
                 except OSError as err:
-                    print(f"\n\n{err}\n\n")
+                    print(f"{err}\n")
                     continue
 
                 
