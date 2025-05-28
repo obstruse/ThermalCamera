@@ -38,9 +38,6 @@ theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 SMB = config.getint('ThermalCamera','SMB',fallback=-1)
 
-#GPIO.setmode(GPIO.BCM)
-#GPIO.setwarnings(False)
-
 # initialize display environment
 pygame.display.init()
 pygame.display.set_caption('ThermalCamera')
@@ -52,6 +49,7 @@ font = pygame.font.Font(None, 30)
 WHITE = (255,255,255)
 BLACK = (0,0,0)
 
+#----------------------------------
 # initialize the sensor
 if SMB >= 0 :
     import i2cSMB as i2cSMB
@@ -64,7 +62,7 @@ else:
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = MLX90640.RefreshRate.REFRESH_64_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_32_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
@@ -91,6 +89,16 @@ cam.start()
 (camWidth,camHeight) = cam.get_size()
 print(cam.get_size())
 
+# initialize streamCapture
+import mmap
+fd = os.open('/dev/shm/ThermalCamera', os.O_CREAT | os.O_TRUNC | os.O_RDWR)
+assert os.write(fd, b'\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
+TCmap = mmap.mmap(fd, mmap.PAGESIZE, mmap.MAP_SHARED, mmap.PROT_WRITE)
+fileNum = 0
+fileDate = ""
+streamDir = ""
+
+#----------------------------------
 # create surfaces
 # display surface
 lcd = pygame.display.set_mode((width,height))
@@ -110,6 +118,7 @@ tMag = 1
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
 
+#----------------------------------
 #utility functions
 def setCameraFOV(FOV) :
     global imageScale
@@ -180,6 +189,7 @@ def menuButton( menuText, menuCenter, menuSize ) :
 
         return mbRect
 
+#----------------------------------
 # menu buttons and text
 menuCapture = menuButton('Capture',(60,30),(120,60) )
 menuMode = menuButton('Mode',(60,90),(120,60) )
@@ -208,7 +218,8 @@ AVGtemp = 0
 AVGnum = font.render('999', True, WHITE)
 AVGnumPos = AVGnum.get_rect(center=(width-30,270))
 
-#how many color values we can have
+#----------------------------------
+# colors
 COLORDEPTH = 2048
 colormap = [None] * 4
 
@@ -237,15 +248,7 @@ colormap[2] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c i
 colors = list(red.range_to(Color("yellow"), COLORDEPTH))
 colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
-
-
-# streamCapture
-streamCapture = 5
-#GPIO.setup(streamCapture, GPIO.OUT)
-#GPIO.output(streamCapture, False)
-fileNum = 0
-fileDate = ""
-
+#----------------------------------
 temps = [0] * 768
 AVGspots = 2
 AVGdepth = 6    # the heat noise looks like 2.5sec cycle, so 6 to get 3 seconds smoothing
@@ -283,6 +286,7 @@ pygame.event.post(OFFSETS)
 timeStart = time.time()
 frameStart = time.time()
 
+#----------------------------------
 # loop...
 running = True
 while(running):
@@ -368,6 +372,10 @@ while(running):
                                camFOV -= 1
                                setCameraFOV(camFOV)
                                print(f"camFOV: {camFOV}")
+
+
+                        if event.key == K_t :
+                            theme = (theme +1) % len(colormap)
                                                               
                         if (event.key == K_w) :
                                 # write config
@@ -534,6 +542,23 @@ while(running):
         # remote stream capture
         # similar to imageCapture, but invoked by GPIO
         # capture continues until stopped
+        print(f"TCmap {TCmap[0]} - {TCmap[0]:x}")
+        if TCmap[0] == ord('1') :
+                if fileNum == 0 :
+                        # store in subdirectory of working directory
+                        streamDir = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                        os.mkdir(streamDir)
+
+                #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
+                fileName = f"{streamDir}/{fileNum:04d}.jpg"
+                fileNum = fileNum + 1
+                pygame.image.save(lcd, fileName)
+
+        elif fileNum != 0 :
+                fileNum = 0
+                print("frames captured:",fileNum)
+
+
         # from a shell window: start capture:  gpio -g write 5 1
         #                       stop capture:  gpio -g write 5 0
         # (Raspberry Pi 4 requires gpio v2.52
