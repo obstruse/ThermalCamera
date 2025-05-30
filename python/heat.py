@@ -62,18 +62,32 @@ else:
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = MLX90640.RefreshRate.REFRESH_32_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_0_5_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
-mlx = MLX90640.MLX90640(i2c)
-print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
+mlx = MLX90640.MLX90640m0(i2c)
+#print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
+print(mlx.version)
 
 # refresh rate for a 'subpage', half the pixels in the heat image changing
 # The highest refresh rate for 100kHz I2C is 4Hz
 # At 1mHz I2C you can use 32Hz refresh rate
 mlx.refresh_rate = refresh
+
+temps = [0] * 768
+AVGspots = 2
+AVGdepth = 6    # the heat noise looks like a 3  cycle, skips highest/lowest, so 6 for smoothing
+AVGindex = 0
+AVGprint = False
+AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
+
+# pre-define two spots ... I think I also want to turn off the averaging
+AVG[1]['spot'] = 399
+AVG[1]['mark'] = 99
+AVG[0]['spot'] = 400
+AVG[0]['mark'] = 99
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -82,13 +96,15 @@ MINTEMP = (68 - 32) / 1.8
 MAXTEMP = (100 - 32) / 1.8
 
 
+#----------------------------------
 # initialize camera
 pygame.camera.init()
 cam = pygame.camera.Camera(videoDev,(camWidth, camHeight))  # actual camera resolution may be different
 cam.start()
 (camWidth,camHeight) = cam.get_size()
-print(cam.get_size())
+#print(cam.get_size())
 
+#----------------------------------
 # initialize streamCapture
 import mmap
 fd = os.open('/dev/shm/ThermalCamera', os.O_CREAT | os.O_TRUNC | os.O_RDWR)
@@ -126,7 +142,7 @@ def setCameraFOV(FOV) :
 
     # Field of View and Scale
     imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-    print(f"imageScale: {imageScale}")
+    #print(f"imageScale: {imageScale}")
 
     # camera edge detect overlay surface
     # scaled to match display size and preserve aspect ratio
@@ -249,13 +265,6 @@ colors = list(red.range_to(Color("yellow"), COLORDEPTH))
 colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 #----------------------------------
-temps = [0] * 768
-AVGspots = 2
-AVGdepth = 6    # the heat noise looks like 2.5sec cycle, so 6 to get 3 seconds smoothing
-AVGindex = 0
-AVGprint = False
-AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
-
 # flags
 menuDisplay = False 
 heatDisplay = 1
@@ -291,7 +300,7 @@ frameStart = time.time()
 running = True
 while(running):
 
-        print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
+        #print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
         frameStart = time.time()
 
         # scan events
@@ -437,7 +446,7 @@ while(running):
                 except ValueError:
                     continue
                 except OSError as err:
-                    print(f"{err}\n")
+                    print(f"{err}")
                     continue
 
                 
@@ -450,7 +459,8 @@ while(running):
                         AVGprint = True
                         A['raw'][AVGindex] = temps[A['spot']]
                         temps[A['spot']] = A['mark']
-                        A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                        #A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                        A['print'] = C2F(A['raw'][AVGindex])
                 if AVGprint :
                        print(*[A['print'] for A in AVG])
 
@@ -542,7 +552,7 @@ while(running):
         # remote stream capture
         # similar to imageCapture, but invoked by GPIO
         # capture continues until stopped
-        print(f"TCmap {TCmap[0]} - {TCmap[0]:x}")
+        #print(f"TCmap {TCmap[0]} - {TCmap[0]:x}")
         if TCmap[0] == ord('1') :
                 if fileNum == 0 :
                         # store in subdirectory of working directory
