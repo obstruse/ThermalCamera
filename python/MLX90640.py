@@ -81,6 +81,28 @@ class MLX90640m1(adafruit.MLX90640):
         #print(f"subpage: {frameData[833]}")
         return frameData[833]
 
+class MLX90640m2(adafruit.MLX90640):
+    version="Subpages reversed"
+
+
+    def getFrame(self, framebuf: List[int]) -> None:
+        """Request both 'halves' of a frame from the sensor, merge them
+        and calculate the temperature in C for each of 32x24 pixels. Placed
+        into the 768-element array passed in!"""
+        emissivity = 0.95
+        tr = 23.15
+        mlx90640Frame = [0] * 834
+
+        for _ in range(2):
+            status = self._GetFrameData(mlx90640Frame)
+            mlx90640Frame[833] = (mlx90640Frame[833] + 1) % 2
+            if status < 0:
+                raise RuntimeError("Frame data error")
+            # For a MLX90640 in the open air the shift is -8 degC.
+            tr = self._GetTa(mlx90640Frame) - OPENAIR_TA_SHIFT
+            self._CalculateTo(mlx90640Frame, emissivity, tr, framebuf)
+
+
 
 
 RefreshRate = adafruit.RefreshRate

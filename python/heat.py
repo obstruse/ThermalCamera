@@ -62,14 +62,14 @@ else:
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = MLX90640.RefreshRate.REFRESH_0_5_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_1_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
 mlx = MLX90640.MLX90640m0(i2c)
 #print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-print(mlx.version)
+print(mlx.version,refresh)
 
 # refresh rate for a 'subpage', half the pixels in the heat image changing
 # The highest refresh rate for 100kHz I2C is 4Hz
@@ -81,6 +81,8 @@ AVGspots = 2
 AVGdepth = 6    # the heat noise looks like a 3  cycle, skips highest/lowest, so 6 for smoothing
 AVGindex = 0
 AVGprint = False
+AVGfile = ""
+AVGfd = 0
 AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
 # pre-define two spots ... I think I also want to turn off the averaging
@@ -382,6 +384,8 @@ while(running):
                                setCameraFOV(camFOV)
                                print(f"camFOV: {camFOV}")
 
+                        if event.key == K_p :
+                            AVGprint = not AVGprint
 
                         if event.key == K_t :
                             theme = (theme +1) % len(colormap)
@@ -456,13 +460,22 @@ while(running):
                 AVGindex = (AVGindex + 1) % AVGdepth
                 for A in AVG:
                     if A['spot']:
-                        AVGprint = True
+                        #AVGprint = True
                         A['raw'][AVGindex] = temps[A['spot']]
                         temps[A['spot']] = A['mark']
                         #A['print'] = C2F(sum(A['raw'])/AVGdepth)
                         A['print'] = C2F(A['raw'][AVGindex])
                 if AVGprint :
-                       print(*[A['print'] for A in AVG])
+                    if AVGfile == "" :
+                        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
+                        AVGfd = open(AVGfile, "a")
+                        print(mlx.version, refresh, file=AVGfd)
+
+                    print(*[A['print'] for A in AVG])
+                    print(*[A['print'] for A in AVG], file=AVGfd)
+                elif AVGfile != "" :
+                    AVGfd.close()
+                    AVGfile = ""
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
