@@ -67,7 +67,7 @@ else:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
-mlx = MLX90640.MLX90640m0(i2c)
+mlx = MLX90640.MLX90640(i2c)
 #print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
 print(mlx.version,refresh)
 
@@ -77,7 +77,7 @@ print(mlx.version,refresh)
 mlx.refresh_rate = refresh
 
 temps = [0] * 768
-AVGspots = 2
+AVGspots = 4
 AVGdepth = 6    # the heat noise looks like a 3  cycle, skips highest/lowest, so 6 for smoothing
 AVGindex = 0
 AVGprint = False
@@ -85,7 +85,12 @@ AVGfile = ""
 AVGfd = 0
 AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
-# pre-define two spots ... I think I also want to turn off the averaging
+# pre-define2 two spots ... I think I also want to turn off the averaging
+AVG[3]['spot'] = 398
+AVG[3]['mark'] = 99
+AVG[2]['spot'] = 401
+AVG[2]['mark'] = 99
+
 AVG[1]['spot'] = 399
 AVG[1]['mark'] = 99
 AVG[0]['spot'] = 400
@@ -384,6 +389,13 @@ while(running):
                                setCameraFOV(camFOV)
                                print(f"camFOV: {camFOV}")
 
+                        if event.key == K_PAGEUP :
+                            mlx.refresh_rate = mlx.refresh_rate + 1
+                            print(f"Refresh Rate: { 2 ** (mlx.refresh_rate-1) }")
+                        if event.key == K_PAGEDOWN :
+                            mlx.refresh_rate = mlx.refresh_rate - 1
+                            print(f"Refresh Rate: { 2 ** (mlx.refresh_rate-1) }")
+
                         if event.key == K_p :
                             AVGprint = not AVGprint
 
@@ -443,7 +455,7 @@ while(running):
 
                 # read temperatures from sensor
                 try:
-                    mlx.getFrame(temps)
+                    subPage = mlx.getFrame(temps)
                 except RuntimeError as err:
                     print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
                     sys.exit(1)
@@ -469,10 +481,11 @@ while(running):
                     if AVGfile == "" :
                         AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
                         AVGfd = open(AVGfile, "a")
-                        print(mlx.version, refresh, file=AVGfd)
+                        refresh = 2 ** (mlx.refresh_rate-1)
+                        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
 
-                    print(*[A['print'] for A in AVG])
-                    print(*[A['print'] for A in AVG], file=AVGfd)
+                    print(*[A['print'] for A in AVG],subPage)
+                    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
                 elif AVGfile != "" :
                     AVGfd.close()
                     AVGfile = ""
