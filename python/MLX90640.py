@@ -10,9 +10,19 @@ import time
 from typing import List, Optional, Tuple, Union
 
 class MLX90640(adafruit.MLX90640):
-    version="Single read"
+    version="Fast Driver[with constants]"
 
-    def getFrame(self, framebuf: List[int]) -> None:
+    def setPageMode(self, mode) :
+        controlRegister = [0]
+        value = mode & 0x1
+        self._I2CReadWords(0x800D, controlRegister)
+        value |= controlRegister[0] & 0xFFFE
+        self._I2CWriteWord(0x800D, value)
+        self._I2CReadWords(0x800D, controlRegister)
+        print(f"SubPage Mode: {controlRegister[0] & 0x1}")
+        self.version = f"{self.version} with PageMode set to {mode}"
+
+    def getFrame(self, framebuf: List[int]) -> int:
         emissivity = 0.95
         tr = 23.15
 
@@ -30,6 +40,11 @@ class MLX90640(adafruit.MLX90640):
         # read frame
         timeStart = time.time()
         self._I2CReadWords(0x0400, frameData, end=832)
+        #print(frameData[399], frameData[400])
+        frameData[401] = 65444
+        frameData[400] = 65444
+        frameData[399] = 65444
+        frameData[398] = 65444
 
         # clear data ready
         self._I2CWriteWord(0x8000, 0x0010)
@@ -37,6 +52,7 @@ class MLX90640(adafruit.MLX90640):
         self._I2CReadWords(0x800D, controlRegister)
         frameData[832] = controlRegister[0]
         frameData[833] = statusRegister[0] & 0x0001
+        subPage = statusRegister[0] & 0x0001
         #print(f"read MS: {int((time.time() - timeStart)* 1000)} bps: {int((832*2*9)/(time.time() - timeStart))}")
 
         # For a MLX90640 in the open air the shift is -8 degC.
@@ -46,9 +62,11 @@ class MLX90640(adafruit.MLX90640):
             frameData[833] = i
             self._CalculateTo(frameData, emissivity, tr, framebuf)
 
+        return subPage
+
 
 class MLX90640m0(adafruit.MLX90640):
-    version="Original, unchanged"
+    version="Original Driver"
 
     pass
 
