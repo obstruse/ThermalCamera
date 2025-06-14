@@ -15,14 +15,26 @@ class MLX90640(adafruit.MLX90640):
     Freeze = False
     frameData = [0] * 834
 
+    def setResolution(self, res) :
+        controlRegister = [0]
+        self._I2CReadWords(0x800D, controlRegister)
+        print(f"current resolution: { (controlRegister[0]>>10) & 0x3 }")
+        value = (res & 0x3) << 10
+        value |= controlRegister[0] & 0xF3FF
+        self._I2CWriteWord(0x800D, value)
+        print(f"resolution set to: {res}")
+        self.version = f"{self.version}(resolution: {res})"
+
     def setConstants(self, constants) :
         self.Constants = constants
         if constants:
+            self.version = f"{self.version}(Constants)"
             print("Using Constants")
         else:
+            self.version = self.version.replace("(Constants)","")
             print("Not useing Constants")
 
-        return False
+        return self.Constants
 
     def setFreeze(self, freeze) :
         self.Freeze = freeze
@@ -30,6 +42,7 @@ class MLX90640(adafruit.MLX90640):
             self.version = f"{self.version}(Frozen)"
             print("frozen")
         else:
+            self.version = self.version.replace("(Frozen)","")
             print("unfrozen")
 
         return self.Freeze
@@ -46,7 +59,7 @@ class MLX90640(adafruit.MLX90640):
 
     def getFrame(self, framebuf: List[int]) -> int:
         emissivity = 0.95
-        tr = 23.15
+        #tr = 23.15     # tr is set later, don't need to initialize it
 
         frameData = self.frameData
         Constants = self.Constants

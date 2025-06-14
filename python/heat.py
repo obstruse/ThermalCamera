@@ -62,19 +62,23 @@ else:
         import busio
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = MLX90640.RefreshRate.REFRESH_1_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_4_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
 mlx = MLX90640.MLX90640(i2c)
-#print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-print(mlx.version,refresh)
+#mlx.setPageMode(1)
+#mlx.setResolution(2)        # 2 is the default 18bit ADC
 
+#mlx = MLX90640.MLX90640m0(i2c)
+
+#print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
 # refresh rate for a 'subpage', half the pixels in the heat image changing
 # The highest refresh rate for 100kHz I2C is 4Hz
 # At 1mHz I2C you can use 32Hz refresh rate
 mlx.refresh_rate = refresh
+print(f"{mlx.version}, refresh {2**(mlx.refresh_rate-1)} Hz")
 
 temps = [0] * 768
 AVGspots = 4
@@ -272,6 +276,27 @@ colors = list(red.range_to(Color("yellow"), COLORDEPTH))
 colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
 #----------------------------------
+# bluetooth shutter button
+SHUTTER = True
+try:
+    import evdev
+    from evdev import ecodes
+    import select
+
+    # <Event(1026-MouseButtonUp {'pos': (133, 29), 'button': 1, 'touch': False, 'window': None})>
+    captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
+
+    # <Event(768-KeyDown {'unicode': 't', 'key': 116, 'mod': 4096, 'scancode': 23, 'window': None})>
+    themeEvent = pygame.event.Event(KEYDOWN, key=K_t)
+
+    shutter = evdev.InputDevice('/dev/input/shutter')
+    shutter.grab
+
+except Exception as err:
+    print(f"Shutter Button not available: {err}")
+    SHUTTER = False
+
+#----------------------------------
 # flags
 menuDisplay = False 
 heatDisplay = 1
@@ -310,9 +335,29 @@ while(running):
         #print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
         frameStart = time.time()
 
+        # scan shutter button
+        if SHUTTER :
+            try :
+                Event, nonEvent, nonEvent = select.select([shutter],[], [], 0 )
+                if Event :
+                    for e in shutter.read():
+                        if e.type == ecodes.EV_KEY and e.value == 1:
+                            if e.code == ecodes.ecodes['KEY_VOLUMEDOWN'] :
+                                pygame.event.post(themeEvent)
+                            if e.code == ecodes.ecodes['KEY_VOLUMEUP'] :
+                                pygame.event.post(captureEvent)
+
+            except OSError as err:
+                print(f"Shutter Button Unavailable:{err}")
+                SHUTTER = False
+
+        # event for capture, but pos needs to be the capture button area (changes with resolution)
+        # <Event(1026-MouseButtonUp {'pos': (133, 29), 'button': 1, 'touch': False, 'window': None})>
+
         # scan events
         for event in pygame.event.get():
                 if (event.type == MOUSEBUTTONUP):
+                        print(event)
                         pos = event.pos
                         if event.button == 2:
                             AVG[1]['spot'] = xyTsensor(pos)
@@ -362,7 +407,8 @@ while(running):
                         elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
 
-                if (event.type == KEYUP) :
+                if (event.type == KEYDOWN) :
+                        print(event)
                         if (event.key == K_ESCAPE) :
                                 running = False
 
@@ -398,6 +444,10 @@ while(running):
 
                         if event.key == K_p :
                             AVGprint = not AVGprint
+                            #if AVGprint :
+                            #    mlx.setFreeze(True)
+                            #else:
+                            #    mlx.setFreeze(False)
 
                         if event.key == K_t :
                             theme = (theme +1) % len(colormap)
@@ -409,6 +459,11 @@ while(running):
                                 config.set('ThermalCamera', 'camFOV',str(camFOV))
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
+
+                        if event.key == 114 :
+                            # testing remote button
+                            imageCapture = not imageCapture
+
 
                 if (event == OFFSETS) :
                         # keep the offset scaled heat image within screen, move camera if necessary
@@ -474,7 +529,7 @@ while(running):
                     if A['spot']:
                         #AVGprint = True
                         A['raw'][AVGindex] = temps[A['spot']]
-                        temps[A['spot']] = A['mark']
+                        ###temps[A['spot']] = A['mark']
                         #A['print'] = C2F(sum(A['raw'])/AVGdepth)
                         A['print'] = C2F(A['raw'][AVGindex])
                 if AVGprint :
@@ -493,6 +548,8 @@ while(running):
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
+                MAXTEMP = max(temps)
+                MINTEMP = min(temps)
 
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
@@ -574,6 +631,7 @@ while(running):
                 imageCapture = False
                 fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
                 pygame.image.save(lcd, fileName)
+                print(f"Image saved to: {fileName}")
 
         # remote stream capture
         # similar to imageCapture, but invoked by GPIO
@@ -591,8 +649,8 @@ while(running):
                 pygame.image.save(lcd, fileName)
 
         elif fileNum != 0 :
-                fileNum = 0
                 print("frames captured:",fileNum)
+                fileNum = 0
 
 
         # from a shell window: start capture:  gpio -g write 5 1
