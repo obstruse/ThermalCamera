@@ -11,6 +11,7 @@ from pygame.locals import *
 
 import math
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -117,10 +118,10 @@ cam.start()
 
 #----------------------------------
 # initialize streamCapture
-import mmap
-fd = os.open('/dev/shm/ThermalCamera', os.O_CREAT | os.O_TRUNC | os.O_RDWR)
-assert os.write(fd, b'\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
-TCmap = mmap.mmap(fd, mmap.PAGESIZE, mmap.MAP_SHARED, mmap.PROT_WRITE)
+##import mmap
+##fd = os.open('/dev/shm/ThermalCamera', os.O_CREAT | os.O_TRUNC | os.O_RDWR)
+##assert os.write(fd, b'\x00' * mmap.PAGESIZE) == mmap.PAGESIZE
+##TCmap = mmap.mmap(fd, mmap.PAGESIZE, mmap.MAP_SHARED, mmap.PROT_WRITE)
 fileNum = 0
 fileDate = ""
 streamDir = ""
@@ -284,10 +285,13 @@ try:
     import select
 
     # <Event(1026-MouseButtonUp {'pos': (133, 29), 'button': 1, 'touch': False, 'window': None})>
-    captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
+    ##captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
 
     # <Event(768-KeyDown {'unicode': 't', 'key': 116, 'mod': 4096, 'scancode': 23, 'window': None})>
     themeEvent = pygame.event.Event(KEYDOWN, key=K_t)
+    streamEvent = pygame.event.Event(KEYDOWN, key=K_s)
+    captureEvent = pygame.event.Event(KEYDOWN, key=K_i)
+
 
     shutter = evdev.InputDevice('/dev/input/shutter')
     shutter.grab
@@ -301,6 +305,7 @@ except Exception as err:
 menuDisplay = False 
 heatDisplay = 1
 imageCapture = False
+streamCapture = False
 
 imageScale = 1.0
 setCameraFOV(camFOV)
@@ -343,7 +348,7 @@ while(running):
                     for e in shutter.read():
                         if e.type == ecodes.EV_KEY and e.value == 1:
                             if e.code == ecodes.ecodes['KEY_VOLUMEDOWN'] :
-                                pygame.event.post(themeEvent)
+                                pygame.event.post(streamEvent)
                             if e.code == ecodes.ecodes['KEY_VOLUMEUP'] :
                                 pygame.event.post(captureEvent)
 
@@ -451,6 +456,12 @@ while(running):
 
                         if event.key == K_t :
                             theme = (theme +1) % len(colormap)
+
+                        if event.key == K_s :
+                            streamCapture = not streamCapture
+
+                        if event.key == K_i :
+                            imageCapture = not imageCapture
                                                               
                         if (event.key == K_w) :
                                 # write config
@@ -459,10 +470,6 @@ while(running):
                                 config.set('ThermalCamera', 'camFOV',str(camFOV))
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
-
-                        if event.key == 114 :
-                            # testing remote button
-                            imageCapture = not imageCapture
 
 
                 if (event == OFFSETS) :
@@ -549,7 +556,7 @@ while(running):
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
                 MAXTEMP = max(temps)
-                MINTEMP = min(temps)
+                #MINTEMP = min(temps)
 
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
@@ -590,7 +597,8 @@ while(running):
                         #camImage = pygame.transform.laplacian(cam.get_image())
                         camImage = pygame.transform.laplacian(getCameraScaled())
                         overlay.fill((0,0,0))
-                        pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
+                        #pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
+                        pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(255,255,255),1)
                         # ...changed my mind.
                         # Scale camera to fit heat image
                         #if imageScale > 1.0 :
@@ -637,20 +645,24 @@ while(running):
         # similar to imageCapture, but invoked by GPIO
         # capture continues until stopped
         #print(f"TCmap {TCmap[0]} - {TCmap[0]:x}")
-        if TCmap[0] == ord('1') :
-                if fileNum == 0 :
-                        # store in subdirectory of working directory
-                        streamDir = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                        os.mkdir(streamDir)
+        #if TCmap[0] == ord('1') :
+        if streamCapture :
+            if fileNum == 0 :
+                streamStart = time.time()
+                # store in subdirectory of working directory
+                streamDir = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                os.mkdir(streamDir)
 
-                #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
-                fileName = f"{streamDir}/{fileNum:04d}.jpg"
-                fileNum = fileNum + 1
-                pygame.image.save(lcd, fileName)
+            #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
+            fileName = f"{streamDir}/{fileNum:04d}.jpg"
+            fileNum = fileNum + 1
+            pygame.image.save(lcd, fileName)
 
         elif fileNum != 0 :
-                print("frames captured:",fileNum)
-                fileNum = 0
+            fps = fileNum / (time.time() - streamStart)
+            print(f"frames captured: {fileNum}, FPS: {fps:.1f}")
+            Path(f"{streamDir}/FPS").write_text(f"{fps:.1f}")
+            fileNum = 0
 
 
         # from a shell window: start capture:  gpio -g write 5 1
