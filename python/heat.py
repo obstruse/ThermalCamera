@@ -247,7 +247,8 @@ AVGnum = font.render('999', True, WHITE)
 AVGnumPos = AVGnum.get_rect(center=(width-30,270))
 
 #----------------------------------
-# colors
+# create colormaps
+
 COLORDEPTH = 2048
 colormap = [None] * 4
 
@@ -271,10 +272,33 @@ red  = Color("red")
 #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
 colors = list(blue.range_to(Color("red"), COLORDEPTH))
 colormap[1] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+# method 3
 colors = list(blue.range_to(Color("orange"), COLORDEPTH))
 colormap[2] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-colors = list(red.range_to(Color("yellow"), COLORDEPTH))
-colormap[3] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+# method 4
+def map4(value):
+    numColors = 5
+    cl = (
+            (0,0,1),
+            (0,1,1),
+            (0,1,0),
+            (1,1,0),
+            (1,0,0))
+
+    x = value * (numColors - 1)
+    lo = int(x//1)
+    hi = int(lo + 1)
+    dif = x - lo
+
+    r = int( (cl[lo][0] + dif*(cl[hi][0] - cl[lo][0])) * 255)
+    g = int( (cl[lo][1] + dif*(cl[hi][1] - cl[lo][1])) * 255)
+    b = int( (cl[lo][2] + dif*(cl[hi][2] - cl[lo][2])) * 255)
+
+    return r,g,b
+
+colormap[3] = [(map4(c/COLORDEPTH)) for c in range(COLORDEPTH)]
 
 #----------------------------------
 # bluetooth shutter button
@@ -362,7 +386,6 @@ while(running):
         # scan events
         for event in pygame.event.get():
                 if (event.type == MOUSEBUTTONUP):
-                        print(event)
                         pos = event.pos
                         if event.button == 2:
                             AVG[1]['spot'] = xyTsensor(pos)
@@ -413,7 +436,6 @@ while(running):
                                 menuDisplay = True
 
                 if (event.type == KEYDOWN) :
-                        print(event)
                         if (event.key == K_ESCAPE) :
                                 running = False
 
