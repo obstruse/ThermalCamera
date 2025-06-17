@@ -14,17 +14,14 @@ import time
 from pathlib import Path
 
 import numpy as np
-
 from colour import Color
-
-#import RPi.GPIO as GPIO
-
-from configparser import ConfigParser
 
 # change to the python directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+#----------------------------------
 # read config
+from configparser import ConfigParser
 config = ConfigParser()
 config.read('config.ini')
 offsetX = config.getint('ThermalCamera','offsetX',fallback=0)
@@ -39,6 +36,7 @@ theme = config.getint('ThermalCamera','theme',fallback=1)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 SMB = config.getint('ThermalCamera','SMB',fallback=-1)
 
+#----------------------------------
 # initialize display environment
 pygame.display.init()
 pygame.display.set_caption('ThermalCamera')
@@ -52,32 +50,24 @@ BLACK = (0,0,0)
 
 #----------------------------------
 # initialize the sensor
+# Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
+refresh = MLX90640.RefreshRate.REFRESH_4_HZ
 if SMB >= 0 :
     import i2cSMB as i2cSMB
     i2c = i2cSMB.i2cSMB(SMB)
-    refresh = MLX90640.RefreshRate.REFRESH_4_HZ
 else:
     try:
         import RPi.GPIO as GPIO
         import board
         import busio
-        # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
         i2c = busio.I2C(board.SCL, board.SDA)
-        refresh = MLX90640.RefreshRate.REFRESH_4_HZ
     except Exception as e:
         print(f"No I2C bus found: {e}")
         sys.exit()
 
 mlx = MLX90640.MLX90640(i2c)
-#mlx.setPageMode(1)
-#mlx.setResolution(2)        # 2 is the default 18bit ADC
+#mlx = MLX90640.MLX90640m0(i2c)     # original driver
 
-#mlx = MLX90640.MLX90640m0(i2c)
-
-#print("MLX addr detected on I2C, Serial #", [hex(i) for i in mlx.serial_number])
-# refresh rate for a 'subpage', half the pixels in the heat image changing
-# The highest refresh rate for 100kHz I2C is 4Hz
-# At 1mHz I2C you can use 32Hz refresh rate
 mlx.refresh_rate = refresh
 print(f"{mlx.version}, refresh {2**(mlx.refresh_rate-1)} Hz")
 
@@ -133,15 +123,19 @@ lcd = pygame.display.set_mode((width,height))
 #lcd = pygame.display.set_mode((width,height), pygame.FULLSCREEN)
 lcdRect = lcd.get_rect()
 
+#----------------------------------
 # heat surface and sensor temperature index
 heat = pygame.surface.Surface((32,24))
 tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
 tIndex = np.flip(tIndex,0)
-tCenter = (0,0)  # center of the heat image
-tMag = 1
+
+tCenter = heatImage.get_rect().center
+tMag = width/32
+heatRect = heatImage.get_rect(center=lcdRect.center)
 
 # camera edge detect overlay surface determined by setCamerFOV()
 
+#----------------------------------
 # menu surface
 menu = pygame.surface.Surface((width, height))
 menu.set_colorkey((0,0,0))
@@ -167,9 +161,10 @@ def getCameraScaled(scale=None):
     return pygame.transform.scale(cam.get_image(),(int(width*scale), int(width*(camHeight/camWidth)*scale)))
 
 def xyTsensor(xy):
-    offset = np.subtract(xy, lcdRect.center)
-    xyA = np.add(offset,tCenter)
-    xyT = np.divide(xyA,(tMag,tMag))
+    # temps[] index for (x,y) screen position
+    #offset = np.subtract(xy, lcdRect.center)
+    #xyA = np.add(offset,tCenter)
+    xyT = np.divide(xy,(tMag,tMag))
     xT = int(xyT[0])
     yT = int(xyT[1])
 
@@ -308,14 +303,14 @@ try:
     from evdev import ecodes
     import select
 
+    # to view events:  python -m evdev.evtest
     # <Event(1026-MouseButtonUp {'pos': (133, 29), 'button': 1, 'touch': False, 'window': None})>
-    ##captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
-
     # <Event(768-KeyDown {'unicode': 't', 'key': 116, 'mod': 4096, 'scancode': 23, 'window': None})>
+    
     themeEvent = pygame.event.Event(KEYDOWN, key=K_t)
     streamEvent = pygame.event.Event(KEYDOWN, key=K_s)
     captureEvent = pygame.event.Event(KEYDOWN, key=K_i)
-
+    #captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
 
     shutter = evdev.InputDevice('/dev/input/shutter')
     shutter.grab
@@ -364,6 +359,7 @@ while(running):
         #print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
         frameStart = time.time()
 
+        #----------------------------------
         # scan shutter button
         if SHUTTER :
             try :
@@ -380,9 +376,7 @@ while(running):
                 print(f"Shutter Button Unavailable:{err}")
                 SHUTTER = False
 
-        # event for capture, but pos needs to be the capture button area (changes with resolution)
-        # <Event(1026-MouseButtonUp {'pos': (133, 29), 'button': 1, 'touch': False, 'window': None})>
-
+        #----------------------------------
         # scan events
         for event in pygame.event.get():
                 if (event.type == MOUSEBUTTONUP):
@@ -493,38 +487,14 @@ while(running):
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
 
-
                 if (event == OFFSETS) :
-                        # keep the offset scaled heat image within screen, move camera if necessary
-                        # changed my mind:  move the camera image, don't move the heat image
-                        #heatOffsetX = offsetX
-                        #camOffsetX  = 0
-                        #if ( heatOffsetX > marginX ) :
-                        #    heatOffsetX = marginX
-                        #    camOffsetX  = offsetX - marginX
-                        #if ( heatOffsetX < -marginX ) :
-                        #    heatOffsetX = -marginX
-                        #    camOffsetX  = offsetX + marginX
-                        #
-                        #
-                        #heatOffsetY = offsetY
-                        #camOffsetY = 0
-                        #if ( heatOffsetY > marginY ) :
-                        #    heatOffsetY = marginY
-                        #    camOffsetY  = offsetY - marginY
-                        #if ( heatOffsetY < -marginY ) :
-                        #    heatOffsetY = -marginY
-                        #    camOffsetY  = offsetY + marginY
+                        # current plan is to scale heat to fill display at 4:3
+                        # ...and only scale/offset camera for alignment
                         heatOffsetX = 0
                         heatOffsetY = 0
                         camOffsetX = offsetX
                         camOffsetY = offsetY
-                        # need to clean this up later (if it works OK)
-
-                            
-                            
-
-
+                        
         if heatDisplay :
                 # the pygame camera buffering causes the camera image to lag beind the heat image
                 # this extra get_image helps.  
@@ -537,6 +507,7 @@ while(running):
                 # heatDisplay == 2      heat + camera
                 # heatDisplay == 3      heat only
 
+                #----------------------------------
                 # read temperatures from sensor
                 try:
                     subPage = mlx.getFrame(temps)
@@ -549,9 +520,9 @@ while(running):
                     print(f"{err}")
                     continue
 
-                
                 timeStart = time.time()
 
+                #----------------------------------
                 # print averages
                 AVGindex = (AVGindex + 1) % AVGdepth
                 for A in AVG:
@@ -587,31 +558,9 @@ while(running):
                 # So, is it a video camera with heat overlay, or heat camera with video overlay?
                 # I say it's a heat camera, so primarily is should show as much of the heat image as possible.
                 # ... if that's so, shouldn't the display aspect match the heat image and not the video image?
-                # TODO: match display aspect ratio to heat image?
-
-                # Scale heat image to fit screen.  Pad/truncate verticle is needed
-                #if imageScale < 1.0 and heatDisplay != 3:
-                #        # TODO:  this isn't right, but I don't need it yet, so...
-                #        heatImage = pygame.transform.smoothscale(heat, (int(width/imageScale),int(height/imageScale)))
-                #        tCenter = heatImage.get_rect().center
-                #        tMag = (width/imageScale)/32
-                #        heatRect = heatImage.get_rect(center=lcdRect.center)
-                #        pygame.Rect.move_ip(heatRect,heatOffsetX,heatOffsetY)
-                #else:
-                #        # show heat, full width
-                #        # since the aspect ratio is probably not the same as the display,
-                #        # the height will be truncated or padded 
-                #        heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
-                #        tCenter = heatImage.get_rect().center
-                #        tMag = width/32
-                #        heatRect = heatImage.get_rect(center=lcdRect.center)
-
+                
                 heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
-                tCenter = heatImage.get_rect().center
-                tMag = width/32
-                heatRect = heatImage.get_rect(center=lcdRect.center)
-
-                lcd.blit(heatImage,heatRect)
+                lcd.blit(heatImage,(0,0))
 
                 # add camera
                 if heatDisplay == 1 :
