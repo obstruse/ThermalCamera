@@ -73,23 +73,23 @@ print(f"{mlx.version}, refresh {2**(mlx.refresh_rate-1)} Hz")
 
 temps = [0] * 768
 AVGspots = 4
-AVGdepth = 6    # the heat noise looks like a 3  cycle, skips highest/lowest, so 6 for smoothing
+AVGdepth = 8
 AVGindex = 0
 AVGprint = False
 AVGfile = ""
 AVGfd = 0
-AVG = [{'spot': 0, 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
+AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
 # pre-define2 two spots ... I think I also want to turn off the averaging
-AVG[3]['spot'] = 398
-AVG[3]['mark'] = 99
-AVG[2]['spot'] = 401
-AVG[2]['mark'] = 99
+#AVG[3]['spot'] = 398
+#AVG[3]['mark'] = 99
+#AVG[2]['spot'] = 401
+#AVG[2]['mark'] = 99
 
-AVG[1]['spot'] = 399
-AVG[1]['mark'] = 99
-AVG[0]['spot'] = 400
-AVG[0]['mark'] = 99
+#AVG[1]['spot'] = 399
+#AVG[1]['mark'] = 99
+#AVG[0]['spot'] = 400
+#AVG[0]['mark'] = 99
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
@@ -129,9 +129,9 @@ heat = pygame.surface.Surface((32,24))
 tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
 tIndex = np.flip(tIndex,0)
 
-tCenter = heatImage.get_rect().center
+tCenter = lcdRect.center
 tMag = width/32
-heatRect = heatImage.get_rect(center=lcdRect.center)
+#heatRect = heatImage.get_rect(center=lcdRect.center)
 
 # camera edge detect overlay surface determined by setCamerFOV()
 
@@ -348,7 +348,7 @@ OFFSETS = pygame.event.Event(pygame.USEREVENT)
 # trigger offset calculation
 pygame.event.post(OFFSETS)
 
-timeStart = time.time()
+#timeStart = time.time()
 frameStart = time.time()
 
 #----------------------------------
@@ -383,9 +383,11 @@ while(running):
                         pos = event.pos
                         if event.button == 2:
                             AVG[1]['spot'] = xyTsensor(pos)
+                            AVG[1]['xy'] = pos
                             AVG[1]['mark'] = 0
                         if event.button == 3:
                             AVG[0]['spot'] = xyTsensor(pos)
+                            AVG[0]['xy'] = pos
                             AVG[0]['mark'] = 99
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
@@ -495,6 +497,7 @@ while(running):
                         camOffsetX = offsetX
                         camOffsetY = offsetY
                         
+        #----------------------------------
         if heatDisplay :
                 # the pygame camera buffering causes the camera image to lag beind the heat image
                 # this extra get_image helps.  
@@ -520,30 +523,30 @@ while(running):
                     print(f"{err}")
                     continue
 
-                timeStart = time.time()
+                #timeStart = time.time()
 
                 #----------------------------------
                 # print averages
-                AVGindex = (AVGindex + 1) % AVGdepth
-                for A in AVG:
-                    if A['spot']:
-                        #AVGprint = True
-                        A['raw'][AVGindex] = temps[A['spot']]
-                        ###temps[A['spot']] = A['mark']
-                        #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                        A['print'] = C2F(A['raw'][AVGindex])
-                if AVGprint :
-                    if AVGfile == "" :
-                        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
-                        AVGfd = open(AVGfile, "a")
-                        refresh = 2 ** (mlx.refresh_rate-1)
-                        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
+                #AVGindex = (AVGindex + 1) % AVGdepth
+                #for A in AVG:
+                #    if A['spot']:
+                #        #AVGprint = True
+                #        A['raw'][AVGindex] = temps[A['spot']]
+                #        #temps[A['spot']] = A['mark']
+                #        #A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                #        A['print'] = C2F(A['raw'][AVGindex])
+                #if AVGprint :
+                #    if AVGfile == "" :
+                #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
+                #        AVGfd = open(AVGfile, "a")
+                #        refresh = 2 ** (mlx.refresh_rate-1)
+                #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
 
-                    print(*[A['print'] for A in AVG],subPage)
-                    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
-                elif AVGfile != "" :
-                    AVGfd.close()
-                    AVGfile = ""
+                #    print(*[A['print'] for A in AVG],subPage)
+                #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
+                #elif AVGfile != "" :
+                #    AVGfd.close()
+                #    AVGfile = ""
 
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
@@ -562,6 +565,7 @@ while(running):
                 heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
                 lcd.blit(heatImage,(0,0))
 
+                #----------------------------------
                 # add camera
                 if heatDisplay == 1 :
                         # heat display with edge detect camera overlay
@@ -599,6 +603,38 @@ while(running):
                         camImage.set_alpha(100)
                         lcd.blit(camImage,camRect)
 
+                #----------------------------------
+                # print AVG on top of everything, and file 
+                if AVGprint:
+                    AVGindex = (AVGindex + 1) % AVGdepth
+                    for A in AVG:
+                        if A['spot']:
+                            A['raw'][AVGindex] = temps[A['spot']]
+                            #temps[A['spot']] = A['mark']
+                            #A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                            A['print'] = C2F(A['raw'][AVGindex])
+                            if A['xy'] != (0,0) :
+                                pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 0)
+                    
+
+                # don't want file output at the moment
+                #if AVGprint :
+                #    if AVGfile == "" :
+                #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
+                #        AVGfd = open(AVGfile, "a")
+                #        refresh = 2 ** (mlx.refresh_rate-1)
+                #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
+
+                #    print(*[A['print'] for A in AVG],subPage)
+                #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
+                #elif AVGfile != "" :
+                #    AVGfd.close()
+                #    AVGfile = ""
+
+
+
+        #----------------------------------
+        # no heat display
         else:
                 # show camera, full scale, no heat
                 #camImage = pygame.transform.scale(cam.get_image(), (width,height))
