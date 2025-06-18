@@ -614,7 +614,11 @@ while(running):
                             #A['print'] = C2F(sum(A['raw'])/AVGdepth)
                             A['print'] = C2F(A['raw'][AVGindex])
                             if A['xy'] != (0,0) :
-                                pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 0)
+                                pygame.draw.circle(lcd, (0,0,0)      , A['xy'], 1*tMag, 3)
+                                pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
+                                Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
+                                lcd.blit(Asurf,A['xy'])
+
                     
 
                 # don't want file output at the moment
