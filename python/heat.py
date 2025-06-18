@@ -75,7 +75,6 @@ temps = [0] * 768
 AVGspots = 4
 AVGdepth = 8
 AVGindex = 0
-AVGprint = False
 AVGfile = ""
 AVGfd = 0
 AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
@@ -325,6 +324,7 @@ menuDisplay = False
 heatDisplay = 1
 imageCapture = False
 streamCapture = False
+AVGprint = False
 
 imageScale = 1.0
 setCameraFOV(camFOV)
@@ -385,10 +385,12 @@ while(running):
                             AVG[1]['spot'] = xyTsensor(pos)
                             AVG[1]['xy'] = pos
                             AVG[1]['mark'] = 0
+                            AVGprint = True
                         if event.button == 3:
                             AVG[0]['spot'] = xyTsensor(pos)
                             AVG[0]['xy'] = pos
                             AVG[0]['mark'] = 99
+                            AVGprint = True
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
                                         MAXTEMP+=1
@@ -526,28 +528,6 @@ while(running):
                 #timeStart = time.time()
 
                 #----------------------------------
-                # print averages
-                #AVGindex = (AVGindex + 1) % AVGdepth
-                #for A in AVG:
-                #    if A['spot']:
-                #        #AVGprint = True
-                #        A['raw'][AVGindex] = temps[A['spot']]
-                #        #temps[A['spot']] = A['mark']
-                #        #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                #        A['print'] = C2F(A['raw'][AVGindex])
-                #if AVGprint :
-                #    if AVGfile == "" :
-                #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
-                #        AVGfd = open(AVGfile, "a")
-                #        refresh = 2 ** (mlx.refresh_rate-1)
-                #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
-
-                #    print(*[A['print'] for A in AVG],subPage)
-                #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
-                #elif AVGfile != "" :
-                #    AVGfd.close()
-                #    AVGfile = ""
-
                 # map temperatures and create pixels
                 pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
@@ -592,11 +572,6 @@ while(running):
 
                 if heatDisplay == 2 :
                         # heat display with alpha camera overlay
-                        #if imageScale > 1.0 :
-                        #        camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
-                        #else:
-                        #        camImage = pygame.transform.scale(cam.get_image(), (width,height))
-                        #camImage = pygame.transform.scale(cam.get_image(), (int(width*imageScale),int(height*imageScale)))
                         camImage = getCameraScaled()
                         camRect = camImage.get_rect(center=lcdRect.center)
                         pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
@@ -614,12 +589,13 @@ while(running):
                             #A['print'] = C2F(sum(A['raw'])/AVGdepth)
                             A['print'] = C2F(A['raw'][AVGindex])
                             if A['xy'] != (0,0) :
-                                pygame.draw.circle(lcd, (0,0,0)      , A['xy'], 1*tMag, 3)
+                                shadow = np.subtract(A['xy'],1)
+                                pygame.draw.circle(lcd, (0,0,0)      , shadow, 1*tMag, 1)
                                 pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
+                                Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
+                                lcd.blit(Asurf,shadow)
                                 Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
                                 lcd.blit(Asurf,A['xy'])
-
-                    
 
                 # don't want file output at the moment
                 #if AVGprint :
@@ -634,8 +610,6 @@ while(running):
                 #elif AVGfile != "" :
                 #    AVGfd.close()
                 #    AVGfile = ""
-
-
 
         #----------------------------------
         # no heat display
