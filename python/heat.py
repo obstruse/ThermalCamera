@@ -500,125 +500,116 @@ while(running):
                         camOffsetY = offsetY
                         
         #----------------------------------
-        if heatDisplay :
-                # the pygame camera buffering causes the camera image to lag beind the heat image
-                # this extra get_image helps.  
-                # There will be another camera image available when heat has processed
-                if (cam.query_image() ) :
-                    cam.get_image()
+        # get heat image
+        # ... all modes will use the heat data in some fashion
+        # ... in camera only mode, heat still processed, 
+        # ... so you can get spot temps on the camera image
 
-                # heatDisplay == 0      camera only
-                # heatDisplay == 1      heat + edge
-                # heatDisplay == 2      heat + camera
-                # heatDisplay == 3      heat only
-
-                #----------------------------------
-                # read temperatures from sensor
-                try:
-                    subPage = mlx.getFrame(temps)
-                except RuntimeError as err:
-                    print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
-                    sys.exit(1)
-                except ValueError:
-                    continue
-                except OSError as err:
-                    print(f"{err}")
-                    continue
-
-                #timeStart = time.time()
-
-                #----------------------------------
-                # map temperatures and create pixels
-                pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
-                AVGtemp = sum(temps) / len(temps)
-                MAXTEMP = max(temps)
-                #MINTEMP = min(temps)
-
-                # create heat surface from pixels
-                heat = pygame.surfarray.make_surface(np.flip(pixels,0))
-                # scale up if necessary to match camera
-                # ...changed my mind.  There's so little resolution to the heat image, scale up looks worse.
-                # So, is it a video camera with heat overlay, or heat camera with video overlay?
-                # I say it's a heat camera, so primarily is should show as much of the heat image as possible.
-                # ... if that's so, shouldn't the display aspect match the heat image and not the video image?
-                
-                heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
-                lcd.blit(heatImage,(0,0))
-
-                #----------------------------------
-                # add camera
-                if heatDisplay == 1 :
-                        # heat display with edge detect camera overlay
-                        #camImage = pygame.transform.laplacian(cam.get_image())
-                        camImage = pygame.transform.laplacian(getCameraScaled())
-                        overlay.fill((0,0,0))
-                        #pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-                        pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(255,255,255),1)
-                        # ...changed my mind.
-                        # Scale camera to fit heat image
-                        #if imageScale > 1.0 :
-                        #        overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
-                        #else:
-                        #        # show camera, full width
-                        #        # the aspect ratio is the same as display,
-                        #        # so it shows the full frame
-                        #        overlay2 = pygame.transform.scale(overlay,(width,height))
-
-                        #overlay2 = pygame.transform.scale(overlay,(int(width*imageScale),int(height*imageScale)))
-                        overlayRect = overlay.get_rect(center=lcdRect.center)
-                        pygame.Rect.move_ip(overlayRect,-camOffsetX,-camOffsetY)
-                        overlay.set_colorkey((0,0,0))
-                        lcd.blit(overlay,overlayRect)
-
-                if heatDisplay == 2 :
-                        # heat display with alpha camera overlay
-                        camImage = getCameraScaled()
-                        camRect = camImage.get_rect(center=lcdRect.center)
-                        pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
-                        camImage.set_alpha(100)
-                        lcd.blit(camImage,camRect)
-
-                #----------------------------------
-                # print AVG on top of everything, and file 
-                if AVGprint:
-                    AVGindex = (AVGindex + 1) % AVGdepth
-                    for A in AVG:
-                        if A['spot']:
-                            A['raw'][AVGindex] = temps[A['spot']]
-                            #temps[A['spot']] = A['mark']
-                            #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                            A['print'] = C2F(A['raw'][AVGindex])
-                            if A['xy'] != (0,0) :
-                                shadow = np.subtract(A['xy'],1)
-                                pygame.draw.circle(lcd, (0,0,0)      , shadow, 1*tMag, 1)
-                                pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
-                                Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
-                                lcd.blit(Asurf,shadow)
-                                Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
-                                lcd.blit(Asurf,A['xy'])
-
-                # don't want file output at the moment
-                #if AVGprint :
-                #    if AVGfile == "" :
-                #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
-                #        AVGfd = open(AVGfile, "a")
-                #        refresh = 2 ** (mlx.refresh_rate-1)
-                #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
-
-                #    print(*[A['print'] for A in AVG],subPage)
-                #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
-                #elif AVGfile != "" :
-                #    AVGfd.close()
-                #    AVGfile = ""
+        # pygame camera buffering causes camera image to lag beind heat image
+        # this extra get_image helps.  
+        # There will be another camera image available when heat has processed
+        if (cam.query_image() ) :
+            cam.get_image()
 
         #----------------------------------
-        # no heat display
-        else:
-                # show camera, full scale, no heat
-                #camImage = pygame.transform.scale(cam.get_image(), (width,height))
-                #lcd.blit(camImage,(0,0))
-                lcd.blit(getCameraScaled(1.0),(0,0))
+        # read temperatures from sensor
+        try:
+            subPage = mlx.getFrame(temps)
+        except RuntimeError as err:
+            print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
+            sys.exit(1)
+        except ValueError:
+            continue
+        except OSError as err:
+            print(f"{err}")
+            continue
 
+        #----------------------------------
+        # heatDisplay == 0      camera only
+        # heatDisplay == 1      heat + edge
+        # heatDisplay == 2      heat + camera
+        # heatDisplay == 3      heat only
+        #----------------------------------
+
+        #----------------------------------
+        # base layer
+        if heatDisplay :
+            # heat base layer
+            # map temperatures and create pixels
+            pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
+            AVGtemp = sum(temps) / len(temps)
+            MAXTEMP = max(temps)
+            #MINTEMP = min(temps)
+
+            # create heat surface from pixels
+            heat = pygame.surfarray.make_surface(np.flip(pixels,0))
+            # scaled to display, no offset
+            heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
+            lcd.blit(heatImage,(0,0))
+        else:
+            # camera base layer
+            # this is going to leave a gap at the top, isn't it?
+            camImage = getCameraScaled()
+            camRect = camImage.get_rect(center=lcdRect.center)
+            pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
+            lcd.blit(camImage,camRect)
+
+        #----------------------------------
+        # edge detect camera overlay
+        if heatDisplay == 1 :
+            camImage = pygame.transform.laplacian(getCameraScaled())
+            overlay.fill((0,0,0))
+            #pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
+            pygame.transform.threshold(overlay,camImage,(0,0,0),(40,40,40),(255,255,255),1)
+            # offset camera to match heat image
+            overlayRect = overlay.get_rect(center=lcdRect.center)
+            pygame.Rect.move_ip(overlayRect,-camOffsetX,-camOffsetY)
+            overlay.set_colorkey((0,0,0))
+            lcd.blit(overlay,overlayRect)
+
+        #----------------------------------
+        # alpha camera overlay
+        if heatDisplay == 2 :
+            camImage = getCameraScaled()
+            camRect = camImage.get_rect(center=lcdRect.center)
+            pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
+            camImage.set_alpha(100)
+            lcd.blit(camImage,camRect)
+
+        #----------------------------------
+        # spot temps overlay
+        if AVGprint:
+            AVGindex = (AVGindex + 1) % AVGdepth
+            for A in AVG:
+                if A['spot']:
+                    A['raw'][AVGindex] = temps[A['spot']]
+                    #temps[A['spot']] = A['mark']
+                    #A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                    A['print'] = C2F(A['raw'][AVGindex])
+                    if A['xy'] != (0,0) :
+                        shadow = np.subtract(A['xy'],1)
+                        pygame.draw.circle(lcd, (0,0,0)      , shadow, 1*tMag, 1)
+                        pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
+                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
+                        lcd.blit(Asurf,shadow)
+                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
+                        lcd.blit(Asurf,A['xy'])
+
+        # at some point there will be file output as well
+        #if AVGprint :
+        #    if AVGfile == "" :
+        #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
+        #        AVGfd = open(AVGfile, "a")
+        #        refresh = 2 ** (mlx.refresh_rate-1)
+        #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
+
+        #    print(*[A['print'] for A in AVG],subPage)
+        #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
+        #elif AVGfile != "" :
+        #    AVGfd.close()
+        #    AVGfile = ""
+
+        #----------------------------------
         # capture single frame to file, without menu overlay
         if imageCapture :
                 imageCapture = False
