@@ -420,6 +420,7 @@ while(running):
                                         running = False
 
                                 if menuMode.collidepoint(pos):
+                                        lcd.fill((0,0,0))
                                         heatDisplay+=1
                                         if heatDisplay > 3 :
                                                 heatDisplay = 0
@@ -548,7 +549,6 @@ while(running):
             lcd.blit(heatImage,(0,0))
         else:
             # camera base layer
-            # this is going to leave a gap at the top, isn't it?
             camImage = getCameraScaled()
             camRect = camImage.get_rect(center=lcdRect.center)
             pygame.Rect.move_ip(camRect,-camOffsetX,-camOffsetY)
@@ -617,6 +617,7 @@ while(running):
                 pygame.image.save(lcd, fileName)
                 print(f"Image saved to: {fileName}")
 
+        #----------------------------------
         # remote stream capture
         # similar to imageCapture, but invoked by GPIO
         # capture continues until stopped
@@ -659,6 +660,7 @@ while(running):
         #        fileDate = ""
         #        print("frames captured:",fileNum)
 
+        #----------------------------------
         # add menu overlay
         if menuDisplay :
                 # display max/min
@@ -681,6 +683,7 @@ while(running):
 
                 lcd.blit(menu,(0,0))
 
+        #----------------------------------
         # display
         pygame.display.update()
 
