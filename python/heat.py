@@ -24,8 +24,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from configparser import ConfigParser
 config = ConfigParser()
 config.read('config.ini')
-offsetX = config.getint('ThermalCamera','offsetX',fallback=0)
-offsetY = config.getint('ThermalCamera','offsetY',fallback=0)
+camOffsetX = config.getint('ThermalCamera','offsetX',fallback=0)
+camOffsetY = config.getint('ThermalCamera','offsetY',fallback=0)
 width = config.getint('ThermalCamera','width',fallback=320)
 height = config.getint('ThermalCamera','height',fallback=240)
 camWidth = config.getint('ThermalCamera','camWidth',fallback=320)
@@ -77,25 +77,17 @@ AVGdepth = 8
 AVGindex = 0
 AVGfile = ""
 AVGfd = 0
-AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'mark': 99, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
+AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
 
-# pre-define2 two spots ... I think I also want to turn off the averaging
-#AVG[3]['spot'] = 398
-#AVG[3]['mark'] = 99
-#AVG[2]['spot'] = 401
-#AVG[2]['mark'] = 99
-
+# pre-define two spots
 #AVG[1]['spot'] = 399
-#AVG[1]['mark'] = 99
 #AVG[0]['spot'] = 400
-#AVG[0]['mark'] = 99
 
 # initial low range of the sensor (this will be blue on the screen)
 MINTEMP = (68 - 32) / 1.8
 
 # initial high range of the sensor (this will be red on the screen)
 MAXTEMP = (100 - 32) / 1.8
-
 
 #----------------------------------
 # initialize camera
@@ -329,26 +321,6 @@ AVGprint = False
 imageScale = 1.0
 setCameraFOV(camFOV)
 
-# heat margins after scaling. Only used for wide heat images (imageScale < 1).
-# keep edges of scaled heat image outside display boundaries after offsets applied; offset cam image if necessary
-marginX = 0
-marginY = 0
-if imageScale < 1 :
-   marginX = (width/imageScale - width) / 2
-   marginY = (height/imageScale - height) / 2
-
-heatOffsetX = 0
-heatOffsetY = 0
-camOffsetX = 0
-camOffsetY = 0
-
-# event to calculate offsets (playing with events...)
-OFFSETS = pygame.event.Event(pygame.USEREVENT)
-
-# trigger offset calculation
-pygame.event.post(OFFSETS)
-
-#timeStart = time.time()
 frameStart = time.time()
 
 #----------------------------------
@@ -384,32 +356,30 @@ while(running):
                         if event.button == 2:
                             AVG[1]['spot'] = xyTsensor(pos)
                             AVG[1]['xy'] = pos
-                            AVG[1]['mark'] = 0
                             AVGprint = True
                         if event.button == 3:
                             AVG[0]['spot'] = xyTsensor(pos)
                             AVG[0]['xy'] = pos
-                            AVG[0]['mark'] = 99
                             AVGprint = True
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
-                                        MAXTEMP+=1
+                                        MAXTEMP+=5/9
                                         if MAXTEMP > 80 :
                                                 MAXTEMP = 80
                                 if menuMaxMinus.collidepoint(pos):
-                                        MAXTEMP-=1
+                                        MAXTEMP-=5/9
                                         if MAXTEMP < 1 :
                                                 MAXTEMP = 1
                                         if MAXTEMP <= MINTEMP :
                                                 MINTEMP = MAXTEMP - 1
                                 if menuMinPlus.collidepoint(pos):
-                                        MINTEMP+=1
+                                        MINTEMP+=5/9
                                         if MINTEMP > 79 :
                                                 MINTEMP = 79
                                         if MINTEMP >= MAXTEMP :
                                                 MAXTEMP = MINTEMP + 1
                                 if menuMinMinus.collidepoint(pos):
-                                        MINTEMP-=1
+                                        MINTEMP-=5/9
                                         if MINTEMP < 0 :
                                                 MINTEMP = 0
 
@@ -439,18 +409,14 @@ while(running):
                                 running = False
 
                         if (event.key == K_RIGHT) :
-                                offsetX += 1
-                                pygame.event.post(OFFSETS)
+                                camOffsetX += 1
                         if (event.key == K_LEFT) :
-                                offsetX -= 1
-                                pygame.event.post(OFFSETS)
+                                camOffsetX -= 1
 
                         if (event.key == K_DOWN) :
-                                offsetY += 1
-                                pygame.event.post(OFFSETS)
+                                camOffsetY += 1
                         if (event.key == K_UP) :
-                                offsetY -= 1
-                                pygame.event.post(OFFSETS)
+                                camOffsetY -= 1
 
                         if event.key == K_KP_PLUS :
                                camFOV += 1
@@ -470,10 +436,6 @@ while(running):
 
                         if event.key == K_p :
                             AVGprint = not AVGprint
-                            #if AVGprint :
-                            #    mlx.setFreeze(True)
-                            #else:
-                            #    mlx.setFreeze(False)
 
                         if event.key == K_t :
                             theme = (theme +1) % len(colormap)
@@ -486,34 +448,21 @@ while(running):
                                                               
                         if (event.key == K_w) :
                                 # write config
-                                config.set('ThermalCamera', 'offsetX',str(offsetX))
-                                config.set('ThermalCamera', 'offsetY',str(offsetY))
+                                config.set('ThermalCamera', 'offsetX',str(camOffsetX))
+                                config.set('ThermalCamera', 'offsetY',str(camOffsetY))
                                 config.set('ThermalCamera', 'camFOV',str(camFOV))
                                 with open('config.ini', 'w') as f:
                                         config.write(f)
 
-                if (event == OFFSETS) :
-                        # current plan is to scale heat to fill display at 4:3
-                        # ...and only scale/offset camera for alignment
-                        heatOffsetX = 0
-                        heatOffsetY = 0
-                        camOffsetX = offsetX
-                        camOffsetY = offsetY
-                        
         #----------------------------------
-        # get heat image
-        # ... all modes will use the heat data in some fashion
-        # ... in camera only mode, heat still processed, 
-        # ... so you can get spot temps on the camera image
-
+        # get heat data
+    
         # pygame camera buffering causes camera image to lag beind heat image
         # this extra get_image helps.  
         # There will be another camera image available when heat has processed
         if (cam.query_image() ) :
             cam.get_image()
 
-        #----------------------------------
-        # read temperatures from sensor
         try:
             subPage = mlx.getFrame(temps)
         except RuntimeError as err:
@@ -583,7 +532,6 @@ while(running):
             for A in AVG:
                 if A['spot']:
                     A['raw'][AVGindex] = temps[A['spot']]
-                    #temps[A['spot']] = A['mark']
                     #A['print'] = C2F(sum(A['raw'])/AVGdepth)
                     A['print'] = C2F(A['raw'][AVGindex])
                     if A['xy'] != (0,0) :
