@@ -1,0 +1,12 @@
+linux/i2cHDMI.py
+linux/chat.py
+linux/example.py
+linux/log.txt
+linux/offset.txt
+linux/test.py
+linux/test1.py
+linux/__pycache__/i2cHDMI.cpython-312.pyc
+linux/__pycache__/test.cpython-312.pyc
+python/heatAMG88xx.py
+python/__pycache__/i2cHDMI.cpython-312.pyc
+*/*.dat
