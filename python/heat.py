@@ -17,6 +17,9 @@ import numpy as np
 from colour import Color
 
 def main() :
+    # probably want to handles these differently
+    global MAXTEMP
+    global MINTEMP
 
     # change to the python directory
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -141,7 +144,7 @@ def main() :
 
         # Field of View and Scale
         imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-        #print(f"imageScale: {imageScale}")
+        print(f"camFOV: {camFOV}")
 
         # camera edge detect overlay surface
         # scaled to match display size and preserve aspect ratio
@@ -320,7 +323,6 @@ def main() :
     streamCapture = False
     AVGprint = False
 
-    imageScale = 1.0
     setCameraFOV(camFOV)
 
     frameStart = time.time()
@@ -412,11 +414,9 @@ def main() :
                             if event.key == K_KP_PLUS :
                                 camFOV += 1
                                 setCameraFOV(camFOV)
-                                print(f"camFOV: {camFOV}")
                             if event.key == K_KP_MINUS :
                                 camFOV -= 1
                                 setCameraFOV(camFOV)
-                                print(f"camFOV: {camFOV}")
 
                             if event.key == K_PAGEUP :
                                 mlx.refresh_rate = mlx.refresh_rate + 1
