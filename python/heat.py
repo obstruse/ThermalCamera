@@ -281,13 +281,13 @@ def main() :
 
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
-                                    incrMINMAX((0,1))
+                                    map.incrMINMAX((0,1))
                                 if menuMaxMinus.collidepoint(pos):
-                                    incrMINMAX((0,-1))
+                                    map.incrMINMAX((0,-1))
                                 if menuMinPlus.collidepoint(pos):
-                                    incrMINMAX((1,0))
+                                    map.incrMINMAX((1,0))
                                 if menuMinMinus.collidepoint(pos):
-                                    incrMINMAX((-1,0))
+                                    map.incrMINMAX((-1,0))
                                     
                                 if menuBack.collidepoint(pos):
                                         lcd.fill((0,0,0))
@@ -390,7 +390,7 @@ def main() :
             if heatDisplay :
                 # heat base layer
                 # map temperatures and create pixels
-                pixels = np.array([map.map_pixel(p, MINTEMP, MAXTEMP, 0, map.COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
+                pixels = np.array([map.map_pixel(p) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
                 map.MAXTEMP = max(temps)
                 #MINTEMP = min(temps)
@@ -517,13 +517,13 @@ def main() :
             if menuDisplay :
                     # display max/min
                     lcd.blit(MAXtext,MAXtextPos)
-                    fahrenheit = MAXTEMP*1.8 + 32
+                    fahrenheit = map.MAXTEMP*1.8 + 32
                     MAXnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MAXnum.get_rect(center=MAXnumPos.center)
                     lcd.blit(MAXnum,textPos)
 
                     lcd.blit(MINtext,MINtextPos)
-                    fahrenheit = MINTEMP*1.8 + 32
+                    fahrenheit = map.MINTEMP*1.8 + 32
                     MINnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MINnum.get_rect(center=MINnumPos.center)
                     lcd.blit(MINnum,textPos)
@@ -564,20 +564,20 @@ class map :
 
          
     def incrMINMAX( incr ) :
-        map.MINTEMP,map.MAXTEMP = np.add( (MINTEMP,MAXTEMP), incr )
-        map.MINTEMP,map.MAXTEMP = np.clip( (MINTEMP,MAXTEMP), 0, 80)
-        if MINTEMP > MAXTEMP:
-            map.MINTEMP = MAXTEMP
-        if MAXTEMP < MINTEMP:
-            map.MAXTEMP = MINTEMP
+        map.MINTEMP,map.MAXTEMP = np.add( (map.MINTEMP,map.MAXTEMP), incr )
+        map.MINTEMP,map.MAXTEMP = np.clip( (map.MINTEMP,map.MAXTEMP), 0, 80)
+        if map.MINTEMP > map.MAXTEMP:
+            map.MINTEMP = map.MAXTEMP
+        if map.MAXTEMP < map.MINTEMP:
+            map.MAXTEMP = map.MINTEMP
 
     #----------------------------------
     # utility
     def constrain(val, min_val, max_val):
             return min(max_val, max(min_val, val))
 
-    def map_pixel(x, in_min, in_max, out_min, out_max):
-        cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    def map_pixel(x):
+        cindex = (x - map.MINTEMP) * (map.COLORDEPTH - 0) / (map.MAXTEMP - map.MINTEMP) + 0
         return map.colormap[map.constrain(int(cindex), 0, map.COLORDEPTH - 1) ]
 
     def gaussian(x, a, b, c, d=0):
@@ -652,7 +652,7 @@ class map :
         colors = list(blue.range_to(Color("orange"), map.COLORDEPTH))
         map.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
-    def map4(value):
+    def map4() :
         # method 4
         # ... gradient2
         map.colormap = [(map.gradient2(c/map.COLORDEPTH)) for c in range(map.COLORDEPTH)]
