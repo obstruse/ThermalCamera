@@ -17,9 +17,6 @@ import numpy as np
 from colour import Color
 
 def main() :
-    # probably want to handles these differently
-    global MAXTEMP
-    global MINTEMP
 
     # change to the python directory
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -88,12 +85,7 @@ def main() :
     #AVG[1]['spot'] = 399
     #AVG[0]['spot'] = 400
 
-    # initial low range of the sensor (this will be blue on the screen)
-    MINTEMP = (68 - 32) / 1.8
-
-    # initial high range of the sensor (this will be red on the screen)
-    MAXTEMP = (100 - 32) / 1.8
-
+    
     #----------------------------------
     # initialize camera
     pygame.camera.init()
@@ -171,42 +163,16 @@ def main() :
     def C2F(c):
         return (c * 9.0/5.0) + 32.0
         
-    def constrain(val, min_val, max_val):
-        return min(max_val, max(min_val, val))
-
-    def map_pixel(x, in_min, in_max, out_min, out_max):
-        cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-        return colormap[theme][constrain(int(cindex), 0, COLORDEPTH - 1) ]
-
-    def gaussian(x, a, b, c, d=0):
-        return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
-
-    def gradient(x, width, cmap, spread=1):
-        width = float(width)
-        r = sum(
-            [gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        g = sum(
-            [gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        b = sum(
-            [gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        r = int(constrain(r * 255, 0, 255))
-        g = int(constrain(g * 255, 0, 255))
-        b = int(constrain(b * 255, 0, 255))
-        return r, g, b
-
     def menuButton( menuText, menuCenter, menuSize ) :
-            mbSurf = font.render(menuText,True,WHITE)
-            mbRect = mbSurf.get_rect(center=menuCenter)
-            menu.blit(mbSurf,mbRect)
+        mbSurf = font.render(menuText,True,WHITE)
+        mbRect = mbSurf.get_rect(center=menuCenter)
+        menu.blit(mbSurf,mbRect)
 
-            mbRect.size = menuSize
-            mbRect.center = menuCenter
-            pygame.draw.rect(menu,WHITE,mbRect,3)
+        mbRect.size = menuSize
+        mbRect.center = menuCenter
+        pygame.draw.rect(menu,WHITE,mbRect,3)
 
-            return mbRect
+        return mbRect
 
     #----------------------------------
     # menu buttons and text
@@ -236,60 +202,6 @@ def main() :
     AVGtemp = 0
     AVGnum = font.render('999', True, WHITE)
     AVGnumPos = AVGnum.get_rect(center=(width-30,270))
-
-    #----------------------------------
-    # create colormaps
-
-    COLORDEPTH = 2048
-    colormap = [None] * 4
-
-    # method 1
-    # ... gradient
-    heatmap = (
-        (0.0, (0, 0, 0)),
-        (0.20, (0, 0, 0.5)),
-        (0.40, (0, 0.5, 0)),
-        (0.60, (0.5, 0, 0)),
-        (0.80, (0.75, 0.75, 0)),
-        (0.90, (1.0, 0.75, 0)),
-        (1.00, (1.0, 1.0, 1.0)),
-    )
-    colormap[0] = [(gradient(i, COLORDEPTH, heatmap)) for i in range(COLORDEPTH)]
-
-    # method 2
-    # ... range_to (color)
-    blue = Color("indigo")
-    red  = Color("red")
-    #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-    colors = list(blue.range_to(Color("red"), COLORDEPTH))
-    colormap[1] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    # method 3
-    colors = list(blue.range_to(Color("orange"), COLORDEPTH))
-    colormap[2] = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    # method 4
-    def map4(value):
-        numColors = 5
-        cl = (
-                (0,0,1),
-                (0,1,1),
-                (0,1,0),
-                (1,1,0),
-                (1,0,0))
-
-        x = value * (numColors - 1)
-        lo = int(x//1)
-        hi = int(lo + 1)
-        dif = x - lo
-
-        r = int( (cl[lo][0] + dif*(cl[hi][0] - cl[lo][0])) * 255)
-        g = int( (cl[lo][1] + dif*(cl[hi][1] - cl[lo][1])) * 255)
-        b = int( (cl[lo][2] + dif*(cl[hi][2] - cl[lo][2])) * 255)
-
-        return r,g,b
-
-    colormap[3] = [(map4(c/COLORDEPTH)) for c in range(COLORDEPTH)]
 
     #----------------------------------
     # bluetooth shutter button
@@ -324,6 +236,7 @@ def main() :
     AVGprint = False
 
     setCameraFOV(camFOV)
+    map.setTheme(theme)
 
     frameStart = time.time()
 
@@ -391,8 +304,8 @@ def main() :
                                         imageCapture = not imageCapture
 
                                 if menuAvg.collidepoint(pos):
-                                    MAXTEMP = AVGtemp + (2 / 1.8)
-                                    MINTEMP = AVGtemp - (2 / 1.8)
+                                    map.MAXTEMP = AVGtemp + (2 / 1.8)
+                                    map.MINTEMP = AVGtemp - (2 / 1.8)
 
                         elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
@@ -429,8 +342,8 @@ def main() :
                                 AVGprint = not AVGprint
 
                             if event.key == K_t :
-                                theme = (theme +1) % len(colormap)
-
+                                map.setTheme(map.theme + 1)
+                                
                             if event.key == K_s :
                                 streamCapture = not streamCapture
 
@@ -477,9 +390,9 @@ def main() :
             if heatDisplay :
                 # heat base layer
                 # map temperatures and create pixels
-                pixels = np.array([map_pixel(p, MINTEMP, MAXTEMP, 0, COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
+                pixels = np.array([map.map_pixel(p, MINTEMP, MAXTEMP, 0, map.COLORDEPTH - 1) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
-                MAXTEMP = max(temps)
+                map.MAXTEMP = max(temps)
                 #MINTEMP = min(temps)
 
                 # create heat surface from pixels
@@ -633,16 +546,116 @@ def main() :
 
 #------------------------------------------------
 #------------------------------------------------
-def incrMINMAX( incr ) :
-    global MAXTEMP
-    global MINTEMP
-    MINTEMP,MAXTEMP = np.add( (MINTEMP,MAXTEMP), incr )
-    MINTEMP,MAXTEMP = np.clip( (MINTEMP,MAXTEMP), 0, 80)
-    if MINTEMP > MAXTEMP:
-        MINTEMP = MAXTEMP
-    if MAXTEMP < MINTEMP:
-        MAXTEMP = MINTEMP
+# things only used for color mapping (class candidates)
+#------------------------------------------------
+class map :
+    MINTEMP = (68 - 32) / 1.8
+    MAXTEMP = (100 - 32) / 1.8
+    theme = 0
+
+    COLORDEPTH = 1024
+    colormap = []
     
+    #----------------------------------
+    def setTheme( value ) :
+        cmaps = [map.map1, map.map2, map.map3, map.map4]
+        map.theme = value % len(cmaps)
+        cmaps[map.theme]()
+
+         
+    def incrMINMAX( incr ) :
+        map.MINTEMP,map.MAXTEMP = np.add( (MINTEMP,MAXTEMP), incr )
+        map.MINTEMP,map.MAXTEMP = np.clip( (MINTEMP,MAXTEMP), 0, 80)
+        if MINTEMP > MAXTEMP:
+            map.MINTEMP = MAXTEMP
+        if MAXTEMP < MINTEMP:
+            map.MAXTEMP = MINTEMP
+
+    #----------------------------------
+    # utility
+    def constrain(val, min_val, max_val):
+            return min(max_val, max(min_val, val))
+
+    def map_pixel(x, in_min, in_max, out_min, out_max):
+        cindex = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+        return map.colormap[map.constrain(int(cindex), 0, map.COLORDEPTH - 1) ]
+
+    def gaussian(x, a, b, c, d=0):
+        return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
+
+    def gradient(x, width, cmap, spread=1):
+        width = float(width)
+        r = sum(
+            [map.gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+        )
+        g = sum(
+            [map.gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+        )
+        b = sum(
+            [map.gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+        )
+        r = int(map.constrain(r * 255, 0, 255))
+        g = int(map.constrain(g * 255, 0, 255))
+        b = int(map.constrain(b * 255, 0, 255))
+        return r, g, b
+    
+    def gradient2(value) :
+        numColors = 5
+        cl = (
+            (0,0,1),
+            (0,1,1),
+            (0,1,0),
+            (1,1,0),
+            (1,0,0))
+
+        x = value * (numColors - 1)
+        lo = int(x//1)
+        hi = int(lo + 1)
+        dif = x - lo
+
+        r = int( (cl[lo][0] + dif*(cl[hi][0] - cl[lo][0])) * 255)
+        g = int( (cl[lo][1] + dif*(cl[hi][1] - cl[lo][1])) * 255)
+        b = int( (cl[lo][2] + dif*(cl[hi][2] - cl[lo][2])) * 255)
+
+        return r,g,b
+
+
+    #----------------------------------
+    # create different colormaps
+    def map1() :
+        # method 1
+        # ... gradient
+        heatmap = (
+            (0.0, (0, 0, 0)),
+            (0.20, (0, 0, 0.5)),
+            (0.40, (0, 0.5, 0)),
+            (0.60, (0.5, 0, 0)),
+            (0.80, (0.75, 0.75, 0)),
+            (0.90, (1.0, 0.75, 0)),
+            (1.00, (1.0, 1.0, 1.0)),
+        )
+        map.colormap = [(map.gradient(i, map.COLORDEPTH, heatmap)) for i in range(map.COLORDEPTH)]
+
+    def map2() :
+        # method 2
+        # ... range_to (color)
+        blue = Color("indigo")
+        red  = Color("red")
+        #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
+        colors = list(blue.range_to(Color("red"), map.COLORDEPTH))
+        map.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+    def map3() :
+        # method 3
+        blue = Color("indigo")
+        red  = Color("red")
+        colors = list(blue.range_to(Color("orange"), map.COLORDEPTH))
+        map.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+    def map4(value):
+        # method 4
+        # ... gradient2
+        map.colormap = [(map.gradient2(c/map.COLORDEPTH)) for c in range(map.COLORDEPTH)]
      
 #------------------------------------------------
 #------------------------------------------------
