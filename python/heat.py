@@ -236,7 +236,7 @@ def main() :
     AVGprint = False
 
     setCameraFOV(camFOV)
-    map.setTheme(theme)
+    CM.setTheme(theme)
 
     frameStart = time.time()
 
@@ -281,13 +281,13 @@ def main() :
 
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
-                                    map.incrMINMAX((0,1))
+                                    CM.incrMINMAX((0,1))
                                 if menuMaxMinus.collidepoint(pos):
-                                    map.incrMINMAX((0,-1))
+                                    CM.incrMINMAX((0,-1))
                                 if menuMinPlus.collidepoint(pos):
-                                    map.incrMINMAX((1,0))
+                                    CM.incrMINMAX((1,0))
                                 if menuMinMinus.collidepoint(pos):
-                                    map.incrMINMAX((-1,0))
+                                    CM.incrMINMAX((-1,0))
                                     
                                 if menuBack.collidepoint(pos):
                                         lcd.fill((0,0,0))
@@ -304,8 +304,8 @@ def main() :
                                         imageCapture = not imageCapture
 
                                 if menuAvg.collidepoint(pos):
-                                    map.MAXTEMP = AVGtemp + (2 / 1.8)
-                                    map.MINTEMP = AVGtemp - (2 / 1.8)
+                                    CM.MAXTEMP = AVGtemp + (2 / 1.8)
+                                    CM.MINTEMP = AVGtemp - (2 / 1.8)
 
                         elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
@@ -342,7 +342,7 @@ def main() :
                                 AVGprint = not AVGprint
 
                             if event.key == K_t :
-                                map.setTheme(map.theme + 1)
+                                CM.setTheme(CM.theme + 1)
                                 
                             if event.key == K_s :
                                 streamCapture = not streamCapture
@@ -390,10 +390,11 @@ def main() :
             if heatDisplay :
                 # heat base layer
                 # map temperatures and create pixels
-                pixels = np.array([map.map_pixel(p) for p in temps]).reshape((32,24,3), order='F')
+                #pixels = np.array(list(map(CM.map2pixel, temps))).reshape((32,24,3), order='F')
+                pixels = np.array([CM.map2pixel(p) for p in temps]).reshape((32,24,3), order='F')
                 AVGtemp = sum(temps) / len(temps)
-                map.MAXTEMP = max(temps)
-                #MINTEMP = min(temps)
+                CM.MAXTEMP = max(temps)
+                #CM.MINTEMP = min(temps)
 
                 # create heat surface from pixels
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
@@ -471,10 +472,7 @@ def main() :
 
             #----------------------------------
             # remote stream capture
-            # similar to imageCapture, but invoked by GPIO
             # capture continues until stopped
-            #print(f"TCmap {TCmap[0]} - {TCmap[0]:x}")
-            #if TCmap[0] == ord('1') :
             if streamCapture :
                 if fileNum == 0 :
                     streamStart = time.time()
@@ -493,37 +491,18 @@ def main() :
                 Path(f"{streamDir}/FPS").write_text(f"{fps:.1f}")
                 fileNum = 0
 
-
-            # from a shell window: start capture:  gpio -g write 5 1
-            #                       stop capture:  gpio -g write 5 0
-            # (Raspberry Pi 4 requires gpio v2.52
-            #     wget https://project-downloads.drogon.net/wiringpi-latest.deb
-            #     sudo dpkg -i wiringpi-latest.deb )
-            #if GPIO.input(streamCapture) :
-            #        if fileDate == "" :
-            #                fileDate = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-            #                fileNum = 0
-
-            #        fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
-            #        fileNum = fileNum + 1
-            #        pygame.image.save(lcd, fileName)
-
-            #if not GPIO.input(streamCapture) and fileDate != "" :
-            #        fileDate = ""
-            #        print("frames captured:",fileNum)
-
             #----------------------------------
             # add menu overlay
             if menuDisplay :
                     # display max/min
                     lcd.blit(MAXtext,MAXtextPos)
-                    fahrenheit = map.MAXTEMP*1.8 + 32
+                    fahrenheit = CM.MAXTEMP*1.8 + 32
                     MAXnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MAXnum.get_rect(center=MAXnumPos.center)
                     lcd.blit(MAXnum,textPos)
 
                     lcd.blit(MINtext,MINtextPos)
-                    fahrenheit = map.MINTEMP*1.8 + 32
+                    fahrenheit = CM.MINTEMP*1.8 + 32
                     MINnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MINnum.get_rect(center=MINnumPos.center)
                     lcd.blit(MINnum,textPos)
@@ -542,13 +521,12 @@ def main() :
 
     cam.stop()
     pygame.quit()
-    #GPIO.cleanup()
 
 #------------------------------------------------
 #------------------------------------------------
 # things only used for color mapping (class candidates)
 #------------------------------------------------
-class map :
+class CM :
     MINTEMP = (68 - 32) / 1.8
     MAXTEMP = (100 - 32) / 1.8
     theme = 0
@@ -558,27 +536,27 @@ class map :
     
     #----------------------------------
     def setTheme( value ) :
-        cmaps = [map.map1, map.map2, map.map3, map.map4]
-        map.theme = value % len(cmaps)
-        cmaps[map.theme]()
+        cmaps = [CM.map1, CM.map2, CM.map3, CM.map4]
+        CM.theme = value % len(cmaps)
+        cmaps[CM.theme]()
 
          
     def incrMINMAX( incr ) :
-        map.MINTEMP,map.MAXTEMP = np.add( (map.MINTEMP,map.MAXTEMP), incr )
-        map.MINTEMP,map.MAXTEMP = np.clip( (map.MINTEMP,map.MAXTEMP), 0, 80)
-        if map.MINTEMP > map.MAXTEMP:
-            map.MINTEMP = map.MAXTEMP
-        if map.MAXTEMP < map.MINTEMP:
-            map.MAXTEMP = map.MINTEMP
+        CM.MINTEMP,CM.MAXTEMP = np.add( (CM.MINTEMP,CM.MAXTEMP), incr )
+        CM.MINTEMP,CM.MAXTEMP = np.clip( (CM.MINTEMP,CM.MAXTEMP), 0, 80)
+        if CM.MINTEMP > CM.MAXTEMP:
+            CM.MINTEMP = CM.MAXTEMP
+        if CM.MAXTEMP < CM.MINTEMP:
+            CM.MAXTEMP = CM.MINTEMP
 
     #----------------------------------
     # utility
     def constrain(val, min_val, max_val):
             return min(max_val, max(min_val, val))
 
-    def map_pixel(x):
-        cindex = (x - map.MINTEMP) * (map.COLORDEPTH - 0) / (map.MAXTEMP - map.MINTEMP) + 0
-        return map.colormap[map.constrain(int(cindex), 0, map.COLORDEPTH - 1) ]
+    def map2pixel(x):
+        cindex = (x - CM.MINTEMP) * (CM.COLORDEPTH - 0) / (CM.MAXTEMP - CM.MINTEMP) + 0
+        return CM.colormap[CM.constrain(int(cindex), 0, CM.COLORDEPTH - 1) ]
 
     def gaussian(x, a, b, c, d=0):
         return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
@@ -586,17 +564,17 @@ class map :
     def gradient(x, width, cmap, spread=1):
         width = float(width)
         r = sum(
-            [map.gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [CM.gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
         g = sum(
-            [map.gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [CM.gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
         b = sum(
-            [map.gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [CM.gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
-        r = int(map.constrain(r * 255, 0, 255))
-        g = int(map.constrain(g * 255, 0, 255))
-        b = int(map.constrain(b * 255, 0, 255))
+        r = int(CM.constrain(r * 255, 0, 255))
+        g = int(CM.constrain(g * 255, 0, 255))
+        b = int(CM.constrain(b * 255, 0, 255))
         return r, g, b
     
     def gradient2(value) :
@@ -634,7 +612,7 @@ class map :
             (0.90, (1.0, 0.75, 0)),
             (1.00, (1.0, 1.0, 1.0)),
         )
-        map.colormap = [(map.gradient(i, map.COLORDEPTH, heatmap)) for i in range(map.COLORDEPTH)]
+        CM.colormap = [(CM.gradient(i, CM.COLORDEPTH, heatmap)) for i in range(CM.COLORDEPTH)]
 
     def map2() :
         # method 2
@@ -642,20 +620,20 @@ class map :
         blue = Color("indigo")
         red  = Color("red")
         #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-        colors = list(blue.range_to(Color("red"), map.COLORDEPTH))
-        map.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+        colors = list(blue.range_to(Color("red"), CM.COLORDEPTH))
+        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
     def map3() :
         # method 3
         blue = Color("indigo")
         red  = Color("red")
-        colors = list(blue.range_to(Color("orange"), map.COLORDEPTH))
-        map.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+        colors = list(blue.range_to(Color("orange"), CM.COLORDEPTH))
+        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
 
     def map4() :
         # method 4
         # ... gradient2
-        map.colormap = [(map.gradient2(c/map.COLORDEPTH)) for c in range(map.COLORDEPTH)]
+        CM.colormap = [(CM.gradient2(c/CM.COLORDEPTH)) for c in range(CM.COLORDEPTH)]
      
 #------------------------------------------------
 #------------------------------------------------
