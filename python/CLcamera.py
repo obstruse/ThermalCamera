@@ -2,16 +2,18 @@ import pygame.camera
 import math
 
 class camera:
-    def __init__(self, videoDev, camSize, displaySize, offset=(0,0), heatFOV=45):
+    def __init__(self, videoDev, camSize, displaySize, offset=(0,0), camFOV=45, heatFOV=45):
         (self.width, self.height) = displaySize
         (self.camOffsetX, self.camOffsetY) = offset
         self.heatFOV = heatFOV
+        self.camFOV = camFOV
 
         # initialize camera
         pygame.camera.init()
         self.cam = pygame.camera.Camera(videoDev,camSize)  # actual camera resolution may be different
         self.cam.start()
         (self.camWidth,self.camHeight) = self.cam.get_size()
+        self.setCameraFOV(camFOV)
         
     #----------------------------------
     def setCameraFOV(self,camFOV) :
@@ -44,20 +46,16 @@ class camera:
     # Mode == 3      transparent
     #----------------------------------
 
-    def setMode(self,Mode) :
-        # 4 modes
-        self.mode = Mode % 4
-
-    def getImage(self, lcd) :
+    def getImage(self, lcd, mode=0) :
         lcdRect = lcd.get_rect()
-        if self.mode == 0:
+        if mode == 0:
             # camera base layer
             camImage = self.getCameraScaled()
             camRect = camImage.get_rect(center=lcdRect.center)
             pygame.Rect.move_ip(camRect,-self.camOffsetX,-self.camOffsetY)
             lcd.blit(camImage, camRect)
 
-        if self.mode == 1:
+        if mode == 1:
             # edge detect camera overlay
             camImage = pygame.transform.laplacian(self.getCameraScaled())
             self.overlay.fill((0,0,0))
@@ -69,7 +67,7 @@ class camera:
             self.overlay.set_colorkey((0,0,0))
             lcd.blit(self.overlay,overlayRect)
         
-        if self.mode == 2 :
+        if mode == 2 :
             # alpha camera overlay
             camImage = self.getCameraScaled()
             camRect = camImage.get_rect(center=lcdRect.center)
@@ -77,5 +75,5 @@ class camera:
             camImage.set_alpha(100)
             lcd.blit(camImage,camRect)
 
-        if self.mode == 3:
+        if mode == 3:
             pass
