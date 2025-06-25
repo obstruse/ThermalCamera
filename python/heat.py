@@ -91,10 +91,6 @@ def main() :
     #----------------------------------
     # initialize camera
     cam = camera.camera(videoDev,(camWidth, camHeight),(width,height),(camOffsetX,camOffsetY),camFOV=camFOV, heatFOV=heatFOV)
-    #cam = pygame.camera.Camera(videoDev,(camWidth, camHeight))  # actual camera resolution may be different
-    #cam.start()
-    #(camWidth,camHeight) = cam.get_size()
-    #print(cam.get_size())
 
     #----------------------------------
     # initialize streamCapture
@@ -123,8 +119,6 @@ def main() :
     tMag = width/32
     #heatRect = heatImage.get_rect(center=lcdRect.center)
 
-    # camera edge detect overlay surface determined by setCamerFOV()
-
     #----------------------------------
     # menu surface
     menu = pygame.surface.Surface((width, height))
@@ -132,23 +126,6 @@ def main() :
 
     #----------------------------------
     #utility functions
-    #def setCameraFOV(FOV) :
-    #    global imageScale
-    #    global overlay
-    #
-    #    # Field of View and Scale
-    #    imageScale = math.tan(math.radians(camFOV/2.))/math.tan(math.radians(heatFOV/2.))
-    #    print(f"camFOV: {camFOV}")
-
-    #    # camera edge detect overlay surface
-    #    # scaled to match display size and preserve aspect ratio
-    #    overlay = pygame.surface.Surface((int(width*imageScale), int(width*(camHeight/camWidth)*imageScale)))
-    #    overlay.set_colorkey((0,0,0))
-
-    #def getCameraScaled(scale=None):
-    #    if scale == None:
-    #        scale = imageScale
-    #    return pygame.transform.scale(cam.get_image(),(int(width*scale), int(width*(camHeight/camWidth)*scale)))
 
     def xyTsensor(xy):
         # temps[] index for (x,y) screen position
@@ -237,11 +214,9 @@ def main() :
     streamCapture = False
     AVGprint = False
 
-    #setCameraFOV(camFOV)
     CM.setTheme(theme)
 
     frameStart = time.time()
-
     #----------------------------------
     # loop...
     running = True
@@ -402,6 +377,7 @@ def main() :
                 heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
                 lcd.blit(heatImage,(0,0))
 
+            #----------------------------------
             # add image layer
             cam.getImage(lcd, mode)
 
