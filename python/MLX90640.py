@@ -57,6 +57,11 @@ class MLX90640(adafruit.MLX90640):
         print(f"SubPage Mode: {controlRegister[0] & 0x1}")
         self.version = f"{self.version} with PageMode set to {mode}"
 
+    def dataReady(self) :
+        statusRegister = [0]
+        self._I2CReadWords(0x8000, statusRegister)
+        return statusRegister[0] & 0x0008
+
     def getFrame(self, framebuf: List[int]) -> int:
         emissivity = 0.95
         #tr = 23.15     # tr is set later, don't need to initialize it
