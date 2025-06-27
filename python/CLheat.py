@@ -4,12 +4,13 @@ from colour import Color
 import pygame
 import sys
 import time
+import math
 
 class heat:
     def __init__(self, displaySize=(320,240), SMB=-1 ):
         width, height = displaySize
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
-        refresh = MLX90640.RefreshRate.REFRESH_4_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_2_HZ
         if SMB >= 0 :
             import i2cSMB as i2cSMB
             i2c = i2cSMB.i2cSMB(SMB)
@@ -40,13 +41,14 @@ class heat:
         # pre-define two spots
         #AVG[1]['spot'] = 399
         #AVG[0]['spot'] = 400  
+        CM.setTheme(2)
 
         #----------------------------------
         # temperature index
         tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
         self.tIndex = np.flip(tIndex,0)
         self.tMag = width/32
-        tCenter = lcdRect.center
+        #tCenter = lcdRect.center
         
     def xyTsensor(self, xy):
         # return sensor number for a given display x,y
@@ -72,25 +74,25 @@ class heat:
         #   if mode == 0, read temps, but create black image on output
         #   if MLX doesnot have data ready, use last read
 
-        dataReady = mlx.dataReady
-        if dataReady :
-            try:
+        try:
+            dataReady = mlx.dataReady()
+            if dataReady:
                 mlx.getFrame(temps)
-            except RuntimeError as err:
-                print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
-                sys.exit(1)
-            except ValueError:
-                dataReady = False
-                pass
-            except OSError as err:
-                dataReady = False
-                print(f"{err}")
-                pass
+        except RuntimeError as err:
+            print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
+            sys.exit(1)
+        except ValueError:
+            dataReady = False
+            pass
+        except OSError as err:
+            dataReady = False
+            print(f"{err}")
+            pass
 
         if dataReady:   # if it's still ready: no errors during read.
             AVGtemp = sum(temps) / len(temps)
             CM.MAXTEMP = max(temps)
-            #CM.MINTEMP = min(temps)
+            CM.MINTEMP = min(temps)
 
         #----------------------------------
         # mode == 0      camera only
@@ -159,7 +161,7 @@ class CM :
     theme = 0
 
     COLORDEPTH = 1024
-    colormap = []
+    colormap = [0,0,0] * COLORDEPTH
     
     #----------------------------------
     def setTheme( value ) :
