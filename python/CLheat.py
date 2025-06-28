@@ -121,7 +121,7 @@ class heat:
     def getSpots(self, lcd):
         # spot temps overlay
         temps = self.temps
-        C2F = self.C2F
+        C2F = lambda x : ( x * 9.0/5.0) + 32
         BLACK = (0,0,0)
         WHITE = (255,255,255)
         AVGdepth = self.AVGdepth
@@ -161,8 +161,9 @@ class heat:
 
     def setSpots(self,spot,xy):
         AVG = self.AVG
-
-        pass
+        AVG[spot]['spot'] = self.xyTsensor(xy)
+        AVG[spot]['xy'] = xy
+        self.AVGprint = True
 
     def xyTsensor(self, xy):
         # return sensor number for a given display x,y
