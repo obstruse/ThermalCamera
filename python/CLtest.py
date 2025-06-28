@@ -9,6 +9,7 @@ cam = camera.camera('/dev/video0',(800,600),(320,240),offset=(3,-24))
 
 import CLheat as heat
 mlx = heat.heat((320,240))
+mlx.setTheme(0)
 
 pygame.display.init()
 pygame.display.set_caption('CLtest')

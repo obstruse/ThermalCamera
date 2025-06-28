@@ -22,7 +22,6 @@ class heat:
     AVGindex = 0
     AVGfile = ""
     AVGfd = 0
-    AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
     AVGprint = False
 
     # pre-define two spots
@@ -34,7 +33,7 @@ class heat:
     def __init__(self, displaySize=(320,240), SMB=-1 ):
         width, height = displaySize
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
-        refresh = MLX90640.RefreshRate.REFRESH_2_HZ
+        refresh = MLX90640.RefreshRate.REFRESH_8_HZ
         if SMB >= 0 :
             import i2cSMB as i2cSMB
             i2c = i2cSMB.i2cSMB(SMB)
@@ -62,6 +61,9 @@ class heat:
         self.tIndex = np.flip(tIndex,0)
         self.tMag = width/32
         #tCenter = lcdRect.center
+
+        # init spot dictionary
+        self.AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0] * self.AVGdepth} for _ in range(self.AVGspots)]
         
     #----------------------------------
     def getImage(self, lcd, mode=1):
@@ -239,10 +241,10 @@ class heat:
      
     #----------------------------------
     # colormaps utility
-    def constrain(val, min_val, max_val):
+    def constrain(self, val, min_val, max_val):
             return min(max_val, max(min_val, val))
 
-    def gaussian(x, a, b, c, d=0):
+    def gaussian(self, x, a, b, c, d=0):
         return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
 
     def gradient(self, x, width, cmap, spread=1):
@@ -263,7 +265,7 @@ class heat:
         b = int(constrain(b * 255, 0, 255))
         return r, g, b
     
-    def gradient2(value) :
+    def gradient2(self, value) :
         numColors = 5
         cl = (
             (0,0,1),
