@@ -7,6 +7,30 @@ import time
 import math
 
 class heat:
+
+    MINTEMP = (68 - 32) / 1.8
+    MAXTEMP = (100 - 32) / 1.8
+    theme = 0
+
+    COLORDEPTH = 1024
+    colormap = [0,0,0] * COLORDEPTH
+
+    temps = [0] * 768
+
+    AVGspots = 4
+    AVGdepth = 8
+    AVGindex = 0
+    AVGfile = ""
+    AVGfd = 0
+    AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
+    AVGprint = False
+
+    # pre-define two spots
+    #AVG[1]['spot'] = 399
+    #AVG[0]['spot'] = 400  
+
+    #----------------------------------
+    #----------------------------------
     def __init__(self, displaySize=(320,240), SMB=-1 ):
         width, height = displaySize
         # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
@@ -30,18 +54,7 @@ class heat:
         self.mlx.refresh_rate = refresh
         print(f"{self.mlx.version}, refresh {2**(self.mlx.refresh_rate-1)} Hz")
 
-        self.temps = [0] * 768
-        self.AVGspots = 4
-        self.AVGdepth = 8
-        self.AVGindex = 0
-        self.AVGfile = ""
-        self.AVGfd = 0
-        self.AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0]*self.AVGdepth} for _ in range(self.AVGspots)]
-
-        # pre-define two spots
-        #AVG[1]['spot'] = 399
-        #AVG[0]['spot'] = 400  
-        CM.setTheme(2)
+        self.setTheme(2)
 
         #----------------------------------
         # temperature index
@@ -50,26 +63,12 @@ class heat:
         self.tMag = width/32
         #tCenter = lcdRect.center
         
-    def xyTsensor(self, xy):
-        # return sensor number for a given display x,y
-        tMag = self.tMag
-        tIndex = self.tIndex
-        xyT = np.divide(xy,(tMag,tMag))
-        xT = int(xyT[0])
-        yT = int(xyT[1])
-        return tIndex[xT][yT]
-
+    #----------------------------------
     def getImage(self, lcd, mode=1):
         # get heat data
         mlx = self.mlx
         temps = self.temps
     
-        # pygame camera buffering causes camera image to lag beind heat image
-        # this extra get_image helps.  
-        # There will be another camera image available when heat has processed
-        #if (cam.query_image() ) :
-        #    cam.get_image()
-
         # current plan:
         #   if mode == 0, read temps, but create black image on output
         #   if MLX doesnot have data ready, use last read
@@ -91,8 +90,8 @@ class heat:
 
         if dataReady:   # if it's still ready: no errors during read.
             AVGtemp = sum(temps) / len(temps)
-            CM.MAXTEMP = max(temps)
-            CM.MINTEMP = min(temps)
+            self.MAXTEMP = max(temps)
+            self.MINTEMP = min(temps)
 
         #----------------------------------
         # mode == 0      camera only
@@ -105,8 +104,8 @@ class heat:
             # heat base layer
             if dataReady :  # there was a valid read
                 # map temperatures and create pixels
-                #pixels = np.array(list(map(CM.map2pixel, temps))).reshape((32,24,3), order='F')
-                pixels = np.array([CM.map2pixel(p) for p in temps]).reshape((32,24,3), order='F')
+                #pixels = np.array(list(map(self.map2pixel, temps))).reshape((32,24,3), order='F')
+                pixels = np.array([self.map2pixel(p) for p in temps]).reshape((32,24,3), order='F')
                 heat = pygame.surfarray.make_surface(np.flip(pixels,0))
                 self.heatImage = pygame.transform.smoothscale(heat, lcd.get_size())
 
@@ -114,24 +113,29 @@ class heat:
         else:
             lcd.fill((0,0,0))
 
-            
-
-
-
+    #----------------------------------
+    # spots: display, file, select, accumulate            
+    #----------------------------------
     def getSpots(self, lcd):
-        #----------------------------------
         # spot temps overlay
-        if AVGprint:
-            AVGindex = (AVGindex + 1) % AVGdepth
-            for A in AVG:
+        temps = self.temps
+        C2F = self.C2F
+        BLACK = (0,0,0)
+        WHITE = (255,255,255)
+        AVGdepth = self.AVGdepth
+        tMag = self.tMag
+
+        if self.AVGprint:
+            self.AVGindex = (self.AVGindex + 1) % AVGdepth
+            for A in self.AVG:
                 if A['spot']:
-                    A['raw'][AVGindex] = temps[A['spot']]
+                    A['raw'][self.AVGindex] = temps[A['spot']]
                     #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                    A['print'] = C2F(A['raw'][AVGindex])
+                    A['print'] = C2F(A['raw'][self.AVGindex])
                     if A['xy'] != (0,0) :
                         shadow = np.subtract(A['xy'],1)
-                        pygame.draw.circle(lcd, (0,0,0)      , shadow, 1*tMag, 1)
-                        pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
+                        pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag, 1)
+                        pygame.draw.circle(lcd, (255,255,255), A['xy'], tMag, 1)
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
                         lcd.blit(Asurf,shadow)
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
@@ -153,57 +157,110 @@ class heat:
         #    AVGfd.close()
         #    AVGfile = ""
 
+    def setSpots(self,spot,xy):
+        AVG = self.AVG
 
-#------------------------------------------------
-class CM :
-    MINTEMP = (68 - 32) / 1.8
-    MAXTEMP = (100 - 32) / 1.8
-    theme = 0
+        pass
 
-    COLORDEPTH = 1024
-    colormap = [0,0,0] * COLORDEPTH
-    
-    #----------------------------------
-    def setTheme( value ) :
-        cmaps = [CM.map1, CM.map2, CM.map3, CM.map4]
-        CM.theme = value % len(cmaps)
-        cmaps[CM.theme]()
-
-         
-    def incrMINMAX( incr ) :
-        CM.MINTEMP,CM.MAXTEMP = np.add( (CM.MINTEMP,CM.MAXTEMP), incr )
-        CM.MINTEMP,CM.MAXTEMP = np.clip( (CM.MINTEMP,CM.MAXTEMP), 0, 80)
-        if CM.MINTEMP > CM.MAXTEMP:
-            CM.MINTEMP = CM.MAXTEMP
-        if CM.MAXTEMP < CM.MINTEMP:
-            CM.MAXTEMP = CM.MINTEMP
+    def xyTsensor(self, xy):
+        # return sensor number for a given display x,y
+        tMag = self.tMag
+        tIndex = self.tIndex
+        xyT = np.divide(xy,(tMag,tMag))
+        xT = int(xyT[0])
+        yT = int(xyT[1])
+        return tIndex[xT][yT]
 
     #----------------------------------
-    # utility
+    # color mapping
+    #----------------------------------
+    def map2pixel(self,x):
+        MINTEMP = self.MINTEMP
+        MAXTEMP = self.MAXTEMP
+        COLORDEPTH = self.COLORDEPTH
+        constrain = self.constrain
+
+        cindex = (x - MINTEMP) * (COLORDEPTH - 0) / (MAXTEMP - MINTEMP) + 0
+        return self.colormap[constrain(int(cindex), 0, COLORDEPTH - 1) ]
+
+    def incrMINMAX( self, incr ) :
+        self.MINTEMP,self.MAXTEMP = np.add( (self.MINTEMP,self.MAXTEMP), incr )
+        self.MINTEMP,self.MAXTEMP = np.clip( (self.MINTEMP,self.MAXTEMP), 0, 80)
+        if self.MINTEMP > self.MAXTEMP:
+            self.MINTEMP = self.MAXTEMP
+        if self.MAXTEMP < self.MINTEMP:
+            self.MAXTEMP = self.MINTEMP
+
+    #----------------------------------
+    # Themes
+    #----------------------------------
+    def setTheme( self,value ) :
+        # generate the colormap for the selected theme
+        cmaps = [self.map1, self.map2, self.map3, self.map4]
+        self.theme = value % len(cmaps)
+        cmaps[self.theme]()
+
+    #----------------------------------
+    # create different colormaps
+    def map1(self) :
+        # method 1
+        # ... gradient
+        heatmap = (
+            (0.0, (0, 0, 0)),
+            (0.20, (0, 0, 0.5)),
+            (0.40, (0, 0.5, 0)),
+            (0.60, (0.5, 0, 0)),
+            (0.80, (0.75, 0.75, 0)),
+            (0.90, (1.0, 0.75, 0)),
+            (1.00, (1.0, 1.0, 1.0)),
+        )
+        self.colormap = [(self.gradient(i, self.COLORDEPTH, heatmap)) for i in range(self.COLORDEPTH)]
+
+    def map2(self) :
+        # method 2
+        # ... range_to (color)
+        blue = Color("indigo")
+        red  = Color("red")
+        #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
+        colors = list(blue.range_to(Color("red"), self.COLORDEPTH))
+        self.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+    def map3(self) :
+        # method 3
+        blue = Color("indigo")
+        red  = Color("red")
+        colors = list(blue.range_to(Color("orange"), self.COLORDEPTH))
+        self.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
+
+    def map4(self) :
+        # method 4
+        # ... gradient2
+        self.colormap = [(self.gradient2(c/self.COLORDEPTH)) for c in range(self.COLORDEPTH)]
+     
+    #----------------------------------
+    # colormaps utility
     def constrain(val, min_val, max_val):
             return min(max_val, max(min_val, val))
-
-    def map2pixel(x):
-        cindex = (x - CM.MINTEMP) * (CM.COLORDEPTH - 0) / (CM.MAXTEMP - CM.MINTEMP) + 0
-        return CM.colormap[CM.constrain(int(cindex), 0, CM.COLORDEPTH - 1) ]
 
     def gaussian(x, a, b, c, d=0):
         return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
 
-    def gradient(x, width, cmap, spread=1):
+    def gradient(self, x, width, cmap, spread=1):
+        gaussian = self.gaussian
+        constrain = self.constrain
         width = float(width)
         r = sum(
-            [CM.gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
         g = sum(
-            [CM.gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
         b = sum(
-            [CM.gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
+            [gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
         )
-        r = int(CM.constrain(r * 255, 0, 255))
-        g = int(CM.constrain(g * 255, 0, 255))
-        b = int(CM.constrain(b * 255, 0, 255))
+        r = int(constrain(r * 255, 0, 255))
+        g = int(constrain(g * 255, 0, 255))
+        b = int(constrain(b * 255, 0, 255))
         return r, g, b
     
     def gradient2(value) :
@@ -227,40 +284,3 @@ class CM :
         return r,g,b
 
 
-    #----------------------------------
-    # create different colormaps
-    def map1() :
-        # method 1
-        # ... gradient
-        heatmap = (
-            (0.0, (0, 0, 0)),
-            (0.20, (0, 0, 0.5)),
-            (0.40, (0, 0.5, 0)),
-            (0.60, (0.5, 0, 0)),
-            (0.80, (0.75, 0.75, 0)),
-            (0.90, (1.0, 0.75, 0)),
-            (1.00, (1.0, 1.0, 1.0)),
-        )
-        CM.colormap = [(CM.gradient(i, CM.COLORDEPTH, heatmap)) for i in range(CM.COLORDEPTH)]
-
-    def map2() :
-        # method 2
-        # ... range_to (color)
-        blue = Color("indigo")
-        red  = Color("red")
-        #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-        colors = list(blue.range_to(Color("red"), CM.COLORDEPTH))
-        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    def map3() :
-        # method 3
-        blue = Color("indigo")
-        red  = Color("red")
-        colors = list(blue.range_to(Color("orange"), CM.COLORDEPTH))
-        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    def map4() :
-        # method 4
-        # ... gradient2
-        CM.colormap = [(CM.gradient2(c/CM.COLORDEPTH)) for c in range(CM.COLORDEPTH)]
-     
