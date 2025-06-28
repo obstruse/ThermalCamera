@@ -24,10 +24,9 @@ class heat:
     AVGfd = 0
     AVGprint = False
 
-    # pre-define two spots
-    #AVG[1]['spot'] = 399
-    #AVG[0]['spot'] = 400  
-
+    pygame.font.init()
+    font = pygame.font.Font(None, 30)
+       
     #----------------------------------
     #----------------------------------
     def __init__(self, displaySize=(320,240), SMB=-1 ):
@@ -55,16 +54,14 @@ class heat:
 
         self.setTheme(2)
 
-        #----------------------------------
         # temperature index
         tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
         self.tIndex = np.flip(tIndex,0)
         self.tMag = width/32
-        #tCenter = lcdRect.center
 
         # init spot dictionary
         self.AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0] * self.AVGdepth} for _ in range(self.AVGspots)]
-        
+
     #----------------------------------
     def getImage(self, lcd, mode=1):
         # get heat data
@@ -126,6 +123,7 @@ class heat:
         WHITE = (255,255,255)
         AVGdepth = self.AVGdepth
         tMag = self.tMag
+        font = self.font
 
         if self.AVGprint:
             self.AVGindex = (self.AVGindex + 1) % AVGdepth
