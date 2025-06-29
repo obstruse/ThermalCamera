@@ -88,7 +88,7 @@ class heat:
             pass
 
         if dataReady:   # if it's still ready: no errors during read.
-            AVGtemp = sum(temps) / len(temps)
+            self.AVGtemp = sum(temps) / len(temps)
             self.MAXTEMP = max(temps)
             self.MINTEMP = min(temps)
 
@@ -284,4 +284,4 @@ class heat:
 
         return r,g,b
 
-
+RefreshRate = MLX90640.RefreshRate

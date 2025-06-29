@@ -3,7 +3,6 @@
 import sys
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import MLX90640
 
 import pygame
 #import pygame.camera
@@ -17,6 +16,7 @@ import numpy as np
 from colour import Color
 
 import CLcamera as camera
+import CLheat
 
 def main() :
 
@@ -55,39 +55,12 @@ def main() :
     #----------------------------------
     # initialize the sensor
     # Must set I2C freq to 1MHz in /boot/config.txt to support 32Hz refresh
-    refresh = MLX90640.RefreshRate.REFRESH_4_HZ
-    if SMB >= 0 :
-        import i2cSMB as i2cSMB
-        i2c = i2cSMB.i2cSMB(SMB)
-    else:
-        try:
-            import RPi.GPIO as GPIO
-            import board
-            import busio
-            i2c = busio.I2C(board.SCL, board.SDA)
-        except Exception as e:
-            print(f"No I2C bus found: {e}")
-            sys.exit()
+    try:
+        mlx = CLheat.heat((width,height),SMB)
+    except Exception as e:
+         print(e)
+         sys.exit()
 
-    mlx = MLX90640.MLX90640(i2c)
-    #mlx = MLX90640.MLX90640m0(i2c)     # original driver
-
-    mlx.refresh_rate = refresh
-    print(f"{mlx.version}, refresh {2**(mlx.refresh_rate-1)} Hz")
-
-    temps = [0] * 768
-    AVGspots = 4
-    AVGdepth = 8
-    AVGindex = 0
-    AVGfile = ""
-    AVGfd = 0
-    AVG = [{'spot': 0, 'xy': (0,0), 'print': 0, 'raw': [0]*AVGdepth} for _ in range(AVGspots)]
-
-    # pre-define two spots
-    #AVG[1]['spot'] = 399
-    #AVG[0]['spot'] = 400
-
-    
     #----------------------------------
     # initialize camera
     cam = camera.camera(videoDev,(camWidth, camHeight),(width,height),(camOffsetX,camOffsetY),camFOV=camFOV, heatFOV=heatFOV)
@@ -110,35 +83,12 @@ def main() :
     lcdRect = lcd.get_rect()
 
     #----------------------------------
-    # heat surface and sensor temperature index
-    heat = pygame.surface.Surface((32,24))
-    tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
-    tIndex = np.flip(tIndex,0)
-
-    tCenter = lcdRect.center
-    tMag = width/32
-    #heatRect = heatImage.get_rect(center=lcdRect.center)
-
-    #----------------------------------
     # menu surface
     menu = pygame.surface.Surface((width, height))
     menu.set_colorkey((0,0,0))
 
     #----------------------------------
     #utility functions
-
-    def xyTsensor(xy):
-        # temps[] index for (x,y) screen position
-        #offset = np.subtract(xy, lcdRect.center)
-        #xyA = np.add(offset,tCenter)
-        xyT = np.divide(xy,(tMag,tMag))
-        xT = int(xyT[0])
-        yT = int(xyT[1])
-
-        #print(f"xT,yT: {(xT,yT)}   x,y: {xy}")
-        #print(f"    tSensor: {tIndex[xT][yT]}") 
-        return tIndex[xT][yT]
-
     def C2F(c):
         return (c * 9.0/5.0) + 32.0
         
@@ -212,9 +162,8 @@ def main() :
     mode = 1
     imageCapture = False
     streamCapture = False
-    AVGprint = False
 
-    CM.setTheme(theme)
+    mlx.setTheme(theme)
 
     frameStart = time.time()
     #----------------------------------
@@ -248,23 +197,19 @@ def main() :
                     if (event.type == MOUSEBUTTONUP):
                         pos = event.pos
                         if event.button == 2:
-                            AVG[1]['spot'] = xyTsensor(pos)
-                            AVG[1]['xy'] = pos
-                            AVGprint = True
+                            mlx.setSpots(1,pos)
                         if event.button == 3:
-                            AVG[0]['spot'] = xyTsensor(pos)
-                            AVG[0]['xy'] = pos
-                            AVGprint = True
-
+                            mlx.setSpots(0,pos)
+                            
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):
-                                    CM.incrMINMAX((0,1))
+                                    mlx.incrMINMAX((0,1))
                                 if menuMaxMinus.collidepoint(pos):
-                                    CM.incrMINMAX((0,-1))
+                                    mlx.incrMINMAX((0,-1))
                                 if menuMinPlus.collidepoint(pos):
-                                    CM.incrMINMAX((1,0))
+                                    mlx.incrMINMAX((1,0))
                                 if menuMinMinus.collidepoint(pos):
-                                    CM.incrMINMAX((-1,0))
+                                    mlx.incrMINMAX((-1,0))
                                     
                                 if menuBack.collidepoint(pos):
                                         lcd.fill((0,0,0))
@@ -280,8 +225,8 @@ def main() :
                                         imageCapture = not imageCapture
 
                                 if menuAvg.collidepoint(pos):
-                                    CM.MAXTEMP = AVGtemp + (2 / 1.8)
-                                    CM.MINTEMP = AVGtemp - (2 / 1.8)
+                                    mlx.MAXTEMP = mlx.AVGtemp + (2 / 1.8)
+                                    mlx.MINTEMP = mlx.AVGtemp - (2 / 1.8)
 
                         elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
@@ -314,10 +259,10 @@ def main() :
                                 print(f"Refresh Rate: { 2 ** (mlx.refresh_rate-1) }")
 
                             if event.key == K_p :
-                                AVGprint = not AVGprint
+                                mlx.AVGprint = not mlx.AVGprint
 
                             if event.key == K_t :
-                                CM.setTheme(CM.theme + 1)
+                                mlx.setTheme(mlx.theme + 1)
                                 
                             if event.key == K_s :
                                 streamCapture = not streamCapture
@@ -334,84 +279,16 @@ def main() :
                                             config.write(f)
 
             #----------------------------------
-            # get heat data
-        
-            # pygame camera buffering causes camera image to lag beind heat image
-            # this extra get_image helps.  
-            # There will be another camera image available when heat has processed
-            #if (cam.query_image() ) :
-            #    cam.get_image()
-
-            try:
-                subPage = mlx.getFrame(temps)
-            except RuntimeError as err:
-                print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
-                sys.exit(1)
-            except ValueError:
-                continue
-            except OSError as err:
-                print(f"{err}")
-                continue
-
-            #----------------------------------
-            # mode == 0      camera only
-            # mode == 1      heat + edge
-            # mode == 2      heat + camera
-            # mode == 3      heat only
-            #----------------------------------
-
-            #----------------------------------
-            # heat layer on the bottom
-            if mode :
-                # heat base layer
-                # map temperatures and create pixels
-                #pixels = np.array(list(map(CM.map2pixel, temps))).reshape((32,24,3), order='F')
-                pixels = np.array([CM.map2pixel(p) for p in temps]).reshape((32,24,3), order='F')
-                AVGtemp = sum(temps) / len(temps)
-                CM.MAXTEMP = max(temps)
-                #CM.MINTEMP = min(temps)
-
-                # create heat surface from pixels
-                heat = pygame.surfarray.make_surface(np.flip(pixels,0))
-                # scaled to display, no offset
-                heatImage = pygame.transform.smoothscale(heat, (width,int(width*24/32)))
-                lcd.blit(heatImage,(0,0))
+            # get heat layer
+            mlx.getImage(lcd, mode)
 
             #----------------------------------
             # add image layer
             cam.getImage(lcd, mode)
 
             #----------------------------------
-            # spot temps overlay
-            if AVGprint:
-                AVGindex = (AVGindex + 1) % AVGdepth
-                for A in AVG:
-                    if A['spot']:
-                        A['raw'][AVGindex] = temps[A['spot']]
-                        #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                        A['print'] = C2F(A['raw'][AVGindex])
-                        if A['xy'] != (0,0) :
-                            shadow = np.subtract(A['xy'],1)
-                            pygame.draw.circle(lcd, (0,0,0)      , shadow, 1*tMag, 1)
-                            pygame.draw.circle(lcd, (255,255,255), A['xy'], 1*tMag, 1)
-                            Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
-                            lcd.blit(Asurf,shadow)
-                            Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
-                            lcd.blit(Asurf,A['xy'])
-
-            # at some point there will be file output as well
-            #if AVGprint :
-            #    if AVGfile == "" :
-            #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
-            #        AVGfd = open(AVGfile, "a")
-            #        refresh = 2 ** (mlx.refresh_rate-1)
-            #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
-
-            #    print(*[A['print'] for A in AVG],subPage)
-            #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
-            #elif AVGfile != "" :
-            #    AVGfd.close()
-            #    AVGfile = ""
+            # add spots overlay
+            mlx.getSpots(lcd)
 
             #----------------------------------
             # capture single frame to file, without menu overlay
@@ -447,13 +324,13 @@ def main() :
             if menuDisplay :
                     # display max/min
                     lcd.blit(MAXtext,MAXtextPos)
-                    fahrenheit = CM.MAXTEMP*1.8 + 32
+                    fahrenheit = mlx.MAXTEMP*1.8 + 32
                     MAXnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MAXnum.get_rect(center=MAXnumPos.center)
                     lcd.blit(MAXnum,textPos)
 
                     lcd.blit(MINtext,MINtextPos)
-                    fahrenheit = CM.MINTEMP*1.8 + 32
+                    fahrenheit = mlx.MINTEMP*1.8 + 32
                     MINnum = font.render('%d'%fahrenheit, True, WHITE)
                     textPos = MINnum.get_rect(center=MINnumPos.center)
                     lcd.blit(MINnum,textPos)
@@ -472,119 +349,6 @@ def main() :
 
     cam.stop()
     pygame.quit()
-
-#------------------------------------------------
-#------------------------------------------------
-# things only used for color mapping (class candidates)
-#------------------------------------------------
-class CM :
-    MINTEMP = (68 - 32) / 1.8
-    MAXTEMP = (100 - 32) / 1.8
-    theme = 0
-
-    COLORDEPTH = 1024
-    colormap = []
-    
-    #----------------------------------
-    def setTheme( value ) :
-        cmaps = [CM.map1, CM.map2, CM.map3, CM.map4]
-        CM.theme = value % len(cmaps)
-        cmaps[CM.theme]()
-
-         
-    def incrMINMAX( incr ) :
-        CM.MINTEMP,CM.MAXTEMP = np.add( (CM.MINTEMP,CM.MAXTEMP), incr )
-        CM.MINTEMP,CM.MAXTEMP = np.clip( (CM.MINTEMP,CM.MAXTEMP), 0, 80)
-        if CM.MINTEMP > CM.MAXTEMP:
-            CM.MINTEMP = CM.MAXTEMP
-        if CM.MAXTEMP < CM.MINTEMP:
-            CM.MAXTEMP = CM.MINTEMP
-
-    #----------------------------------
-    # utility
-    def constrain(val, min_val, max_val):
-            return min(max_val, max(min_val, val))
-
-    def map2pixel(x):
-        cindex = (x - CM.MINTEMP) * (CM.COLORDEPTH - 0) / (CM.MAXTEMP - CM.MINTEMP) + 0
-        return CM.colormap[CM.constrain(int(cindex), 0, CM.COLORDEPTH - 1) ]
-
-    def gaussian(x, a, b, c, d=0):
-        return a * math.exp(-((x - b) ** 2) / (2 * c**2)) + d
-
-    def gradient(x, width, cmap, spread=1):
-        width = float(width)
-        r = sum(
-            [CM.gaussian(x, p[1][0], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        g = sum(
-            [CM.gaussian(x, p[1][1], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        b = sum(
-            [CM.gaussian(x, p[1][2], p[0] * width, width / (spread * len(cmap))) for p in cmap]
-        )
-        r = int(CM.constrain(r * 255, 0, 255))
-        g = int(CM.constrain(g * 255, 0, 255))
-        b = int(CM.constrain(b * 255, 0, 255))
-        return r, g, b
-    
-    def gradient2(value) :
-        numColors = 5
-        cl = (
-            (0,0,1),
-            (0,1,1),
-            (0,1,0),
-            (1,1,0),
-            (1,0,0))
-
-        x = value * (numColors - 1)
-        lo = int(x//1)
-        hi = int(lo + 1)
-        dif = x - lo
-
-        r = int( (cl[lo][0] + dif*(cl[hi][0] - cl[lo][0])) * 255)
-        g = int( (cl[lo][1] + dif*(cl[hi][1] - cl[lo][1])) * 255)
-        b = int( (cl[lo][2] + dif*(cl[hi][2] - cl[lo][2])) * 255)
-
-        return r,g,b
-
-
-    #----------------------------------
-    # create different colormaps
-    def map1() :
-        # method 1
-        # ... gradient
-        heatmap = (
-            (0.0, (0, 0, 0)),
-            (0.20, (0, 0, 0.5)),
-            (0.40, (0, 0.5, 0)),
-            (0.60, (0.5, 0, 0)),
-            (0.80, (0.75, 0.75, 0)),
-            (0.90, (1.0, 0.75, 0)),
-            (1.00, (1.0, 1.0, 1.0)),
-        )
-        CM.colormap = [(CM.gradient(i, CM.COLORDEPTH, heatmap)) for i in range(CM.COLORDEPTH)]
-
-    def map2() :
-        # method 2
-        # ... range_to (color)
-        blue = Color("indigo")
-        red  = Color("red")
-        #colors = list(blue.range_to(Color("yellow"), COLORDEPTH))
-        colors = list(blue.range_to(Color("red"), CM.COLORDEPTH))
-        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    def map3() :
-        # method 3
-        blue = Color("indigo")
-        red  = Color("red")
-        colors = list(blue.range_to(Color("orange"), CM.COLORDEPTH))
-        CM.colormap = [(int(c.red * 255), int(c.green * 255), int(c.blue * 255)) for c in colors]
-
-    def map4() :
-        # method 4
-        # ... gradient2
-        CM.colormap = [(CM.gradient2(c/CM.COLORDEPTH)) for c in range(CM.COLORDEPTH)]
      
 #------------------------------------------------
 #------------------------------------------------
