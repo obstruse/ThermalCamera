@@ -284,4 +284,15 @@ class heat:
 
         return r,g,b
 
+    #----------------------------------
+    # pass-through to MLX90640
+    #----------------------------------
+    @property
+    def refresh_rate(self):
+        return self.mlx.refresh_rate
+
+    @refresh_rate.setter
+    def refresh_rate(self, rate):
+        self.mlx.refresh_rate = rate
+
 RefreshRate = MLX90640.RefreshRate
