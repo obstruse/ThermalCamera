@@ -103,6 +103,37 @@ def main() :
 
         return mbRect
 
+    # --------------- menu buttons and text ---------------
+
+    # keyboard stuff
+    K = {
+        K_q:    {"handler":"running=False","desc":"Quit program"},
+        27:     {"handler":"running=False","desc":"Quit program"},
+        
+        K_RIGHT:{"handler":"lcd.incr(10)","desc":"Table color increment"},
+        K_LEFT: {"handler":"lcd.incr(-10)","desc":"Table color decrement"},
+
+        K_r:    {"handler":"lcd.color(0)","desc":"Table color Red"},
+        K_g:    {"handler":"lcd.color(120)","desc":"Table color Green"},
+        K_b:    {"handler":"lcd.color(240)","desc":"Table color Blue"},
+        K_y:    {"handler":"lcd.color(60)","desc":"Table color Yellow"},
+        K_c:    {"handler":"lcd.color(180)","desc":"Table color Cyan"},
+        K_m:    {"handler":"lcd.color(300)","desc":"Table color Magenta"},
+        K_w:    {"handler":"lcd.white()","desc":"Table color White"},
+
+
+        K_z:    {"handler":"keyZoom()","desc":"Enable/disable zoom"},
+        23:     {"handler":"keyZoom()","desc":"Enable/disable zoom (TFT #3)"},
+        
+        K_SPACE:{"handler":"keyMenu()","desc":"Enable/disable menu"},
+        22:     {"handler":"keyMenu()","desc":"Enable/disable menu (TFT #2)"},
+
+        K_RETURN:{"handler":"keyCapture()","desc":"Capture image"},
+        17:     {"handler":"keyCapture()","desc":"Capture image (TFT #1)"},
+    }
+
+    # nothing to display for keys.  Maybe a help screen?
+
     #----------------------------------
     # menu buttons and text
     menuCapture = menuButton('Capture',(60,30),(120,60) )
@@ -224,59 +255,56 @@ def main() :
                                 if menuCapture.collidepoint(pos):
                                         imageCapture = not imageCapture
 
-                                if menuAvg.collidepoint(pos):
-                                    mlx.MAXTEMP = mlx.AVGtemp + (2 / 1.8)
-                                    mlx.MINTEMP = mlx.AVGtemp - (2 / 1.8)
+                                #if menuAvg.collidepoint(pos):
+                                #    mlx.MAXTEMP = mlx.AVGtemp + (2 / 1.8)
+                                #    mlx.MINTEMP = mlx.AVGtemp - (2 / 1.8)
 
                         elif not menuDisplay and event.button == 1 :
                                 menuDisplay = True
 
                     if (event.type == KEYDOWN) :
-                            if (event.key == K_ESCAPE) :
-                                    running = False
+                        if (event.key == K_ESCAPE) :
+                            running = False
 
-                            if (event.key == K_RIGHT) :
-                                    cam.camOffsetX += 1
-                            if (event.key == K_LEFT) :
-                                    cam.camOffsetX -= 1
+                        if (event.key == K_RIGHT) :
+                            cam.incrOffset(1,0)
+                        if (event.key == K_LEFT) :
+                            cam.incrOffset(-1,0)
 
-                            if (event.key == K_DOWN) :
-                                    cam.camOffsetY += 1
-                            if (event.key == K_UP) :
-                                    cam.camOffsetY -= 1
+                        if (event.key == K_DOWN) :
+                            cam.incrOffset(0,1)
+                        if (event.key == K_UP) :
+                            cam.incrOffset(0,-1)
 
-                            if event.key == K_KP_PLUS :
-                                cam.setCameraFOV(cam.camFOV+1)
-                            if event.key == K_KP_MINUS :
-                                camFOV -= 1
-                                cam.setCameraFOV(cam.camFOV-1)
+                        if event.key == K_KP_PLUS :
+                            cam.setCameraFOV(cam.camFOV+1)
+                        if event.key == K_KP_MINUS :
+                            cam.setCameraFOV(cam.camFOV-1)
 
-                            if event.key == K_PAGEUP :
-                                mlx.refresh_rate = mlx.refresh_rate + 1
-                                print(f"Refresh Rate: { 2 ** (mlx.refresh_rate-1) }")
-                            if event.key == K_PAGEDOWN :
-                                mlx.refresh_rate = mlx.refresh_rate - 1
-                                print(f"Refresh Rate: { 2 ** (mlx.refresh_rate-1) }")
+                        if event.key == K_PAGEUP :
+                            mlx.incrRefreshRate(1)
+                        if event.key == K_PAGEDOWN :
+                            mlx.incrRefreshRate(-1)
 
-                            if event.key == K_p :
-                                mlx.AVGprint = not mlx.AVGprint
+                        if event.key == K_p :
+                            mlx.toggleAVGprint()
 
-                            if event.key == K_t :
-                                mlx.setTheme(mlx.theme + 1)
-                                
-                            if event.key == K_s :
-                                streamCapture = not streamCapture
+                        if event.key == K_t :
+                            mlx.setTheme(mlx.theme + 1)
+                            
+                        if event.key == K_s :
+                            streamCapture = not streamCapture
 
-                            if event.key == K_i :
-                                imageCapture = not imageCapture
-                                                                
-                            if (event.key == K_w) :
-                                    # write config
-                                    config.set('ThermalCamera', 'offsetX',str(cam.camOffsetX))
-                                    config.set('ThermalCamera', 'offsetY',str(cam.camOffsetY))
-                                    config.set('ThermalCamera', 'camFOV',str(cam.camFOV))
-                                    with open('config.ini', 'w') as f:
-                                            config.write(f)
+                        if event.key == K_i :
+                            imageCapture = not imageCapture
+                                                            
+                        if (event.key == K_w) :
+                            # write config
+                            config.set('ThermalCamera', 'offsetX',str(cam.camOffsetX))
+                            config.set('ThermalCamera', 'offsetY',str(cam.camOffsetY))
+                            config.set('ThermalCamera', 'camFOV',str(cam.camFOV))
+                            with open('config.ini', 'w') as f:
+                                config.write(f)
 
             #----------------------------------
             # get heat layer
@@ -293,10 +321,10 @@ def main() :
             #----------------------------------
             # capture single frame to file, without menu overlay
             if imageCapture :
-                    imageCapture = False
-                    fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
-                    pygame.image.save(lcd, fileName)
-                    print(f"Image saved to: {fileName}")
+                imageCapture = False
+                fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
+                pygame.image.save(lcd, fileName)
+                print(f"Image saved to: {fileName}")
 
             #----------------------------------
             # remote stream capture
@@ -335,10 +363,10 @@ def main() :
                     textPos = MINnum.get_rect(center=MINnumPos.center)
                     lcd.blit(MINnum,textPos)
 
-                    AVGf = AVGtemp*1.8 + 32
-                    AVGnum = font.render('%d'%AVGf, True, WHITE)
-                    textPos = AVGnum.get_rect(center=AVGnumPos.center)
-                    lcd.blit(AVGnum, textPos)
+                    #AVGf = AVGtemp*1.8 + 32
+                    #AVGnum = font.render('%d'%AVGf, True, WHITE)
+                    #textPos = AVGnum.get_rect(center=AVGnumPos.center)
+                    #lcd.blit(AVGnum, textPos)
 
                     lcd.blit(menu,(0,0))
 

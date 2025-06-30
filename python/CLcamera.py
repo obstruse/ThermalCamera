@@ -1,5 +1,6 @@
 import pygame.camera
 import math
+import numpy as np
 
 class camera:
     def __init__(self, videoDev, camSize, displaySize, offset=(0,0), camFOV=45, heatFOV=45):
@@ -33,11 +34,8 @@ class camera:
         # block until read
         return pygame.transform.scale(self.cam.get_image(),(int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)))
 
-    ## pygame camera buffering causes camera image to lag beind heat image
-    ## this extra get_image helps.  
-    ## There will be another camera image available when heat has processed
-    ##if (cam.query_image() ) :
-    ##    cam.get_image()
+    def incrOffset(self, incr) :
+        self.camOffsetX, self.comOffsetY = np.add( (self.camOffsetX, self.comOffsetY), incr)
 
     #----------------------------------
     # Mode == 0      normal camera

@@ -172,6 +172,9 @@ class heat:
         yT = int(xyT[1])
         return tIndex[xT][yT]
 
+    def toggleAVGprint(self) :
+        self.AVGprint = not self.AVGprint
+        
     #----------------------------------
     # color mapping
     #----------------------------------
@@ -295,5 +298,9 @@ class heat:
     @refresh_rate.setter
     def refresh_rate(self, rate):
         self.mlx.refresh_rate = rate
+        print(f"Refresh Rate: { 2 ** (self.mlx.refresh_rate-1) }")
+
+    def incrRefreshRate(self,incr) :
+        self.refresh_rate = self.refresh_rate + incr
 
 RefreshRate = MLX90640.RefreshRate
