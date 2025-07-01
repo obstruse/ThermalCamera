@@ -228,9 +228,9 @@ def main() :
                     if (event.type == MOUSEBUTTONUP):
                         pos = event.pos
                         if event.button == 2:
-                            mlx.setSpots(1,pos)
+                            mlx.setSpots(2,pos)
                         if event.button == 3:
-                            mlx.setSpots(0,pos)
+                            mlx.setSpots(3,pos)
                             
                         if menuDisplay and event.button == 1 :
                                 if menuMaxPlus.collidepoint(pos):

@@ -54,6 +54,8 @@ class heat:
 
         self.setTheme(2)
 
+        self.heatImage = pygame.surface.Surface((0,0))
+
         # temperature index
         tIndex = np.array(list(range(0,(32*24)))).reshape((32,24),order='F')
         self.tIndex = np.flip(tIndex,0)
@@ -95,8 +97,8 @@ class heat:
             x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
             self.setSpots(0,(x,y))
             sensor = temps.index(self.MINTEMP)
-            x, y = np.multiply(np.argwhere(self.tIndex == sensor),(self.tMag,self.tMag))[0]
-            self.setSpots(3,(x,y))
+            x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
+            self.setSpots(1,(x,y))
 
 
         #----------------------------------
@@ -143,9 +145,9 @@ class heat:
                         shadow = np.subtract(A['xy'],1)
                         pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag, 1)
                         pygame.draw.circle(lcd, (255,255,255), A['xy'], tMag, 1)
-                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,BLACK)
+                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,BLACK)
                         lcd.blit(Asurf,shadow)
-                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.2f}",True,WHITE)
+                        Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,WHITE)
                         lcd.blit(Asurf,A['xy'])
 
     def fileSpots(self, file):
