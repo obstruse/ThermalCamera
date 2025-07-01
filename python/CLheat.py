@@ -91,6 +91,13 @@ class heat:
             self.AVGtemp = sum(temps) / len(temps)
             self.MAXTEMP = max(temps)
             self.MINTEMP = min(temps)
+            sensor = temps.index(self.MAXTEMP)
+            x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
+            self.setSpots(0,(x,y))
+            sensor = temps.index(self.MINTEMP)
+            x, y = np.multiply(np.argwhere(self.tIndex == sensor),(self.tMag,self.tMag))[0]
+            self.setSpots(3,(x,y))
+
 
         #----------------------------------
         # mode == 0      camera only

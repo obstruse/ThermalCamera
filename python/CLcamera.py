@@ -35,7 +35,7 @@ class camera:
         return pygame.transform.scale(self.cam.get_image(),(int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)))
 
     def incrOffset(self, incr) :
-        self.camOffsetX, self.comOffsetY = np.add( (self.camOffsetX, self.comOffsetY), incr)
+        self.camOffsetX, self.camOffsetY = np.add( (self.camOffsetX, self.camOffsetY), incr)
 
     #----------------------------------
     # Mode == 0      normal camera

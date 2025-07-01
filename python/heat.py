@@ -267,14 +267,14 @@ def main() :
                             running = False
 
                         if (event.key == K_RIGHT) :
-                            cam.incrOffset(1,0)
+                            cam.incrOffset((1,0))
                         if (event.key == K_LEFT) :
-                            cam.incrOffset(-1,0)
+                            cam.incrOffset((-1,0))
 
                         if (event.key == K_DOWN) :
-                            cam.incrOffset(0,1)
+                            cam.incrOffset((0,1))
                         if (event.key == K_UP) :
-                            cam.incrOffset(0,-1)
+                            cam.incrOffset((0,-1))
 
                         if event.key == K_KP_PLUS :
                             cam.setCameraFOV(cam.camFOV+1)
