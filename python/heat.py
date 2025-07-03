@@ -107,29 +107,43 @@ def main() :
 
     # keyboard stuff
     K = {
-        K_q:    {"handler":"running=False","desc":"Quit program"},
-        27:     {"handler":"running=False","desc":"Quit program"},
+        K_q:    {"handler":lambda: print(0), "desc":"Quit program"},
+        27:     {"handler":lambda: print(0), "desc":"Quit program"},
         
-        K_RIGHT:{"handler":"lcd.incr(10)","desc":"Table color increment"},
-        K_LEFT: {"handler":"lcd.incr(-10)","desc":"Table color decrement"},
+        K_RIGHT:{"handler":lambda: cam.incrOffset((1,0)), "desc":"Offset Heat: Right"},
+        K_LEFT: {"handler":lambda: cam.incrOffset((-1,0)), "desc":"Offset Heat: Left"},
+        K_UP:   {"handler":lambda: cam.incrOffset((0,1)), "desc":"Offset Heat: Up"},
+        K_DOWN: {"handler":lambda: cam.incrOffset((0,-1)), "desc":"Offset Heat: Down"},
 
-        K_r:    {"handler":"lcd.color(0)","desc":"Table color Red"},
-        K_g:    {"handler":"lcd.color(120)","desc":"Table color Green"},
-        K_b:    {"handler":"lcd.color(240)","desc":"Table color Blue"},
-        K_y:    {"handler":"lcd.color(60)","desc":"Table color Yellow"},
-        K_c:    {"handler":"lcd.color(180)","desc":"Table color Cyan"},
-        K_m:    {"handler":"lcd.color(300)","desc":"Table color Magenta"},
-        K_w:    {"handler":"lcd.white()","desc":"Table color White"},
+        K_PLUS: {"handler":lambda: cam.setCameraFOV(cam.camFOV+1), "desc":"Camera FOV: Increment"},
+        K_MINUS: {"handler":lambda: cam.setCameraFOV(cam.camFOV-1), "desc":"Camera FOV: Decrement"},
 
+        K_PAGEUP: {"handler":lambda: mlx.incrRefreshRate(1), "desc":"Refresh Rate: Increment"},
+        K_PAGEDOWN: {"handler":lambda: mlx.incrRefreshRate(-1), "desc":"Refresh Rate: Decrement"},
 
-        K_z:    {"handler":"keyZoom()","desc":"Enable/disable zoom"},
-        23:     {"handler":"keyZoom()","desc":"Enable/disable zoom (TFT #3)"},
+        K_p:    {"handler":lambda: mlx.toggleAVGprint(), "desc":"Display Spot values: On/Off"},
+        K_t:    {"handler":lambda: mlx.setTheme(mlx.theme + 1), "desc":"Step through Colormap Themes"},
+        K_e:    {"handler":lambda: print(0),"desc":"Change Edge Color"},
+        K_m:    {"handler":lambda: flags.incr(mode=1), "desc":"Step through Display Modes"},
         
-        K_SPACE:{"handler":"keyMenu()","desc":"Enable/disable menu"},
-        22:     {"handler":"keyMenu()","desc":"Enable/disable menu (TFT #2)"},
+        K_s:    {"handler":lambda: print(0),"desc":"Stream Capture"},
+        K_i:    {"handler":lambda: print(0),"desc":"Image Capture"},
+        K_w:    {"handler":lambda: print(0),"desc":"Write config.ini"},
+        K_f:    {"handler":lambda: print(0),"desc":"Save Spot readings to file"},
 
-        K_RETURN:{"handler":"keyCapture()","desc":"Capture image"},
-        17:     {"handler":"keyCapture()","desc":"Capture image (TFT #1)"},
+        K_1:    {"handler":lambda: mlx.incrMINMAX((0,-1)), "desc":"MINTEMP Decrement"},
+        K_2:    {"handler":lambda: print(0),"desc":"MINTEMP Automatic"},
+        K_3:    {"handler":lambda: mlx.incrMINMAX((0,1)), "desc":"MINTEMP Increment"},
+        K_4:    {"handler":lambda: print(0),"desc":""},
+        K_5:    {"handler":lambda: print(0),"desc":"Spot MIN/MAX Toggle"},
+        K_6:    {"handler":lambda: print(0),"desc":"Spot Clear"},
+        K_7:    {"handler":lambda: mlx.incrMINMAX((-1,0)), "desc":"MAXTEMP Decrement"},
+        K_8:    {"handler":lambda: print(0),"desc":"MAXTEMP Automatic"},
+        K_9:    {"handler":lambda: mlx.incrMINMAX((1,0)), "desc":"MAXTEMP Increment"},
+
+#        K_ :    {"handler":lambda: , "desc":""},
+
+
     }
 
     # nothing to display for keys.  Maybe a help screen?
@@ -162,6 +176,8 @@ def main() :
     AVGtemp = 0
     AVGnum = font.render('999', True, WHITE)
     AVGnumPos = AVGnum.get_rect(center=(width-30,270))
+
+
 
     #----------------------------------
     # bluetooth shutter button
@@ -297,6 +313,9 @@ def main() :
 
                         if event.key == K_i :
                             imageCapture = not imageCapture
+                        
+                        if event.key == K_m:
+                            K[event.key]['handler']()
                                                             
                         if (event.key == K_w) :
                             # write config
@@ -308,11 +327,11 @@ def main() :
 
             #----------------------------------
             # get heat layer
-            mlx.getImage(lcd, mode)
+            mlx.getImage(lcd, flags.mode)
 
             #----------------------------------
             # add image layer
-            cam.getImage(lcd, mode)
+            cam.getImage(lcd, flags.mode)
 
             #----------------------------------
             # add spots overlay
@@ -377,7 +396,18 @@ def main() :
 
     cam.stop()
     pygame.quit()
-     
+
+#------------------------------------------------
+class flags:  
+    mode = 1
+    imageCapture = False
+    streamCapture = False
+
+    def incr(mode=0, imageCapture=False, streamCapture=False):
+        flags.mode = (flags.mode + mode) % 4
+        flags.imageCapture = flags.imageCapture != imageCapture
+        flags.streamCapture = flags.streamCapture != streamCapture
+        
 #------------------------------------------------
 #------------------------------------------------
 if __name__ == '__main__':
