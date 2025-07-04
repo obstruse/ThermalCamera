@@ -107,77 +107,50 @@ def main() :
 
     # keyboard stuff
     K = {
-        K_q:    {"handler":lambda: print(0), "desc":"Quit program"},
-        27:     {"handler":lambda: print(0), "desc":"Quit program"},
+        K_q:    {"handler":lambda: flags.incr(running=1), "desc":"Quit program"},
+        27:     {"handler":lambda: flags.incr(running=1), "desc":"Quit program"},
         
         K_RIGHT:{"handler":lambda: cam.incrOffset((1,0)), "desc":"Offset Heat: Right"},
         K_LEFT: {"handler":lambda: cam.incrOffset((-1,0)), "desc":"Offset Heat: Left"},
-        K_UP:   {"handler":lambda: cam.incrOffset((0,1)), "desc":"Offset Heat: Up"},
-        K_DOWN: {"handler":lambda: cam.incrOffset((0,-1)), "desc":"Offset Heat: Down"},
+        K_UP:   {"handler":lambda: cam.incrOffset((0,-1)), "desc":"Offset Heat: Up"},
+        K_DOWN: {"handler":lambda: cam.incrOffset((0,1)), "desc":"Offset Heat: Down"},
 
-        K_PLUS: {"handler":lambda: cam.setCameraFOV(cam.camFOV+1), "desc":"Camera FOV: Increment"},
+        K_EQUALS: {"handler":lambda: cam.setCameraFOV(cam.camFOV+1), "desc":"Camera FOV: Increment"},
         K_MINUS: {"handler":lambda: cam.setCameraFOV(cam.camFOV-1), "desc":"Camera FOV: Decrement"},
 
         K_PAGEUP: {"handler":lambda: mlx.incrRefreshRate(1), "desc":"Refresh Rate: Increment"},
         K_PAGEDOWN: {"handler":lambda: mlx.incrRefreshRate(-1), "desc":"Refresh Rate: Decrement"},
 
-        K_p:    {"handler":lambda: mlx.toggleAVGprint(), "desc":"Display Spot values: On/Off"},
+        K_v:    {"handler":lambda: mlx.setMINMAXspots(), "desc":"Display MIN/MAX values"},
+        K_c:    {"handler":lambda: mlx.clearSpots(), "desc":"Spot Clear"},
         K_t:    {"handler":lambda: mlx.setTheme(mlx.theme + 1), "desc":"Step through Colormap Themes"},
         K_e:    {"handler":lambda: print(0),"desc":"Change Edge Color"},
         K_m:    {"handler":lambda: flags.incr(mode=1), "desc":"Step through Display Modes"},
         
-        K_s:    {"handler":lambda: print(0),"desc":"Stream Capture"},
-        K_i:    {"handler":lambda: print(0),"desc":"Image Capture"},
+        K_s:    {"handler":lambda: flags.incr(streamCapture=True),"desc":"Stream Capture"},
+        K_i:    {"handler":lambda: flags.incr(imageCapture=True),"desc":"Image Capture"},
         K_w:    {"handler":lambda: print(0),"desc":"Write config.ini"},
         K_f:    {"handler":lambda: print(0),"desc":"Save Spot readings to file"},
 
-        K_1:    {"handler":lambda: mlx.incrMINMAX((0,-1)), "desc":"MINTEMP Decrement"},
-        K_2:    {"handler":lambda: print(0),"desc":"MINTEMP Automatic"},
-        K_3:    {"handler":lambda: mlx.incrMINMAX((0,1)), "desc":"MINTEMP Increment"},
-        K_4:    {"handler":lambda: print(0),"desc":""},
-        K_5:    {"handler":lambda: print(0),"desc":"Spot MIN/MAX Toggle"},
-        K_6:    {"handler":lambda: print(0),"desc":"Spot Clear"},
-        K_7:    {"handler":lambda: mlx.incrMINMAX((-1,0)), "desc":"MAXTEMP Decrement"},
-        K_8:    {"handler":lambda: print(0),"desc":"MAXTEMP Automatic"},
-        K_9:    {"handler":lambda: mlx.incrMINMAX((1,0)), "desc":"MAXTEMP Increment"},
+        K_1:    {"handler":lambda: mlx.incrLoTemp(-1), "desc":"Lo temp Decrement"},
+        K_KP1:  {"handler":lambda: mlx.incrLoTemp(-1), "desc":"Lo temp Decrement"},
+        K_2:    {"handler":lambda: mlx.incrLoTemp(0), "desc":"Lo Temp Automatic"},
+        K_KP2:  {"handler":lambda: mlx.incrLoTemp(0), "desc":"Lo Temp Automatic"},
+        K_3:    {"handler":lambda: mlx.incrLoTemp(1), "desc":"Lo Temp Increment"},
+        K_KP3:  {"handler":lambda: mlx.incrLoTemp(1), "desc":"Lo Temp Increment"},
 
+        K_7:    {"handler":lambda: mlx.incrHiTemp(-1), "desc":"Hi Temp Decrement"},
+        K_KP7:  {"handler":lambda: mlx.incrHiTemp(-1), "desc":"Hi Temp Decrement"},
+        K_8:    {"handler":lambda: mlx.incrHiTemp(0), "desc":"Hi Temp Automatic"},
+        K_KP8:  {"handler":lambda: mlx.incrHiTemp(0), "desc":"Hi Temp Automatic"},
+        K_9:    {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
+        K_KP9:  {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
+
+        0:      {"handler":lambda: noKey()}
 #        K_ :    {"handler":lambda: , "desc":""},
-
-
     }
 
-    # nothing to display for keys.  Maybe a help screen?
-
-    #----------------------------------
-    # menu buttons and text
-    menuCapture = menuButton('Capture',(60,30),(120,60) )
-    menuMode = menuButton('Mode',(60,90),(120,60) )
-
-    menuBack = menuButton('Back',(60,150),(120,60) )
-    menuExit = menuButton('Exit',(60,210),(120,60) )
-
-    menuMaxPlus = menuButton('+',(width-90,30),(60,60) )
-    menuMaxMinus = menuButton('-',(width-90,90),(60,60) )
-    menuMinPlus = menuButton('+',(width-90,150),(60,60) )
-    menuMinMinus = menuButton('-',(width-90,210),(60,60) )
-
-    menuAvg = menuButton('AVG',(width-90,270),(60,60) )
-
-    MAXtext = font.render('MAX', True, WHITE)
-    MAXtextPos = MAXtext.get_rect(center=(width-30,20))
-    MAXnum  = font.render('999', True, WHITE)
-    MAXnumPos  = MAXnum.get_rect(center=(width-30,60))
-
-    MINtext = font.render('MIN', True, WHITE)
-    MINtextPos = MINtext.get_rect(center=(width-30,140))
-    MINnum  = font.render('999', True, WHITE)
-    MINnumPos  = MINnum.get_rect(center=(width-30,180))
-
-    AVGtemp = 0
-    AVGnum = font.render('999', True, WHITE)
-    AVGnumPos = AVGnum.get_rect(center=(width-30,270))
-
-
+    # Might be nice to display a help screen, grouped by function?
 
     #----------------------------------
     # bluetooth shutter button
@@ -204,19 +177,13 @@ def main() :
         SHUTTER = False
 
     #----------------------------------
-    # flags
-    menuDisplay = False 
-    mode = 1
-    imageCapture = False
-    streamCapture = False
 
     mlx.setTheme(theme)
 
     frameStart = time.time()
     #----------------------------------
     # loop...
-    running = True
-    while(running):
+    while(flags.running):
 
             #print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
             frameStart = time.time()
@@ -241,46 +208,20 @@ def main() :
             #----------------------------------
             # scan events
             for event in pygame.event.get():
-                    if (event.type == MOUSEBUTTONUP):
+                if (event.type == MOUSEBUTTONDOWN):
+                    if event.button <= 3 :
                         pos = event.pos
-                        if event.button == 2:
-                            mlx.setSpots(2,pos)
-                        if event.button == 3:
-                            mlx.setSpots(3,pos)
-                            
-                        if menuDisplay and event.button == 1 :
-                                if menuMaxPlus.collidepoint(pos):
-                                    mlx.incrMINMAX((0,1))
-                                if menuMaxMinus.collidepoint(pos):
-                                    mlx.incrMINMAX((0,-1))
-                                if menuMinPlus.collidepoint(pos):
-                                    mlx.incrMINMAX((1,0))
-                                if menuMinMinus.collidepoint(pos):
-                                    mlx.incrMINMAX((-1,0))
-                                    
-                                if menuBack.collidepoint(pos):
-                                        lcd.fill((0,0,0))
-                                        menuDisplay = False
-                                if menuExit.collidepoint(pos):
-                                        running = False
+                        mlx.setSpots(event.button,pos)
 
-                                if menuMode.collidepoint(pos):
-                                        lcd.fill((0,0,0))
-                                        mode = (mode + 1) % 4
-                                        
-                                if menuCapture.collidepoint(pos):
-                                        imageCapture = not imageCapture
+                if event.type == KEYDOWN:
+                    key = K.get(event.key,K[0])
+                    key['handler']()
 
-                                #if menuAvg.collidepoint(pos):
-                                #    mlx.MAXTEMP = mlx.AVGtemp + (2 / 1.8)
-                                #    mlx.MINTEMP = mlx.AVGtemp - (2 / 1.8)
-
-                        elif not menuDisplay and event.button == 1 :
-                                menuDisplay = True
+                '''    
 
                     if (event.type == KEYDOWN) :
                         if (event.key == K_ESCAPE) :
-                            running = False
+                            K[event.key]['handler']()
 
                         if (event.key == K_RIGHT) :
                             cam.incrOffset((1,0))
@@ -309,10 +250,10 @@ def main() :
                             mlx.setTheme(mlx.theme + 1)
                             
                         if event.key == K_s :
-                            streamCapture = not streamCapture
+                            K[event.key]['handler']()
 
                         if event.key == K_i :
-                            imageCapture = not imageCapture
+                            K[event.key]['handler']()
                         
                         if event.key == K_m:
                             K[event.key]['handler']()
@@ -324,7 +265,8 @@ def main() :
                             config.set('ThermalCamera', 'camFOV',str(cam.camFOV))
                             with open('config.ini', 'w') as f:
                                 config.write(f)
-
+                '''
+                
             #----------------------------------
             # get heat layer
             mlx.getImage(lcd, flags.mode)
@@ -339,8 +281,9 @@ def main() :
 
             #----------------------------------
             # capture single frame to file, without menu overlay
-            if imageCapture :
-                imageCapture = False
+            if flags.imageCapture :
+                flags.imageCapture = False
+                flags.streamCapture = False
                 fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
                 pygame.image.save(lcd, fileName)
                 print(f"Image saved to: {fileName}")
@@ -348,12 +291,13 @@ def main() :
             #----------------------------------
             # remote stream capture
             # capture continues until stopped
-            if streamCapture :
+            if flags.streamCapture :
                 if fileNum == 0 :
                     streamStart = time.time()
                     # store in subdirectory of working directory
                     streamDir = time.strftime("%Y%m%d-%H%M%S", time.localtime())
                     os.mkdir(streamDir)
+                    print("Capturing stream...")
 
                 #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
                 fileName = f"{streamDir}/{fileNum:04d}.jpg"
@@ -365,29 +309,6 @@ def main() :
                 print(f"frames captured: {fileNum}, FPS: {fps:.1f}")
                 Path(f"{streamDir}/FPS").write_text(f"{fps:.1f}")
                 fileNum = 0
-
-            #----------------------------------
-            # add menu overlay
-            if menuDisplay :
-                    # display max/min
-                    lcd.blit(MAXtext,MAXtextPos)
-                    fahrenheit = mlx.MAXTEMP*1.8 + 32
-                    MAXnum = font.render('%d'%fahrenheit, True, WHITE)
-                    textPos = MAXnum.get_rect(center=MAXnumPos.center)
-                    lcd.blit(MAXnum,textPos)
-
-                    lcd.blit(MINtext,MINtextPos)
-                    fahrenheit = mlx.MINTEMP*1.8 + 32
-                    MINnum = font.render('%d'%fahrenheit, True, WHITE)
-                    textPos = MINnum.get_rect(center=MINnumPos.center)
-                    lcd.blit(MINnum,textPos)
-
-                    #AVGf = AVGtemp*1.8 + 32
-                    #AVGnum = font.render('%d'%AVGf, True, WHITE)
-                    #textPos = AVGnum.get_rect(center=AVGnumPos.center)
-                    #lcd.blit(AVGnum, textPos)
-
-                    lcd.blit(menu,(0,0))
 
             #----------------------------------
             # display
@@ -402,12 +323,17 @@ class flags:
     mode = 1
     imageCapture = False
     streamCapture = False
+    running = True
 
-    def incr(mode=0, imageCapture=False, streamCapture=False):
+    def incr(mode=0, imageCapture=False, streamCapture=False, running=False):
         flags.mode = (flags.mode + mode) % 4
         flags.imageCapture = flags.imageCapture != imageCapture
         flags.streamCapture = flags.streamCapture != streamCapture
+        flags.running = flags.running != running
         
+def noKey():
+    print("Undefined key")
+
 #------------------------------------------------
 #------------------------------------------------
 if __name__ == '__main__':

@@ -8,8 +8,10 @@ import math
 
 class heat:
 
-    MINTEMP = (68 - 32) / 1.8
-    MAXTEMP = (100 - 32) / 1.8
+    loTemp = (68 - 32) / 1.8
+    loTempAuto = False
+    hiTemp = (100 - 32) / 1.8
+    hiTempAuto = False
     theme = 0
 
     COLORDEPTH = 1024
@@ -17,8 +19,10 @@ class heat:
 
     temps = [0] * 768
 
-    AVGspots = 4
-    AVGdepth = 8
+    MINMAXspots = False
+
+    AVGspots = 5
+    AVGdepth = 4
     AVGindex = 0
     AVGfile = ""
     AVGfd = 0
@@ -90,15 +94,18 @@ class heat:
             pass
 
         if dataReady:   # if it's still ready: no errors during read.
-            self.AVGtemp = sum(temps) / len(temps)
-            self.MAXTEMP = max(temps)
-            self.MINTEMP = min(temps)
-            sensor = temps.index(self.MAXTEMP)
-            x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
-            self.setSpots(0,(x,y))
-            sensor = temps.index(self.MINTEMP)
-            x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
-            self.setSpots(1,(x,y))
+            if self.hiTempAuto:
+                self.hiTemp = max(temps)
+            if self.loTempAuto:
+                self.loTemp = min(temps)
+
+            if self.MINMAXspots :
+                sensor = temps.index(min(temps))
+                x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
+                self.setSpots(0,(x,y))
+                sensor = temps.index(max(temps))
+                x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
+                self.setSpots(4,(x,y))
 
 
         #----------------------------------
@@ -143,8 +150,8 @@ class heat:
                     A['print'] = C2F(A['raw'][self.AVGindex])
                     if A['xy'] != (0,0) :
                         shadow = np.subtract(A['xy'],1)
-                        pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag, 1)
-                        pygame.draw.circle(lcd, (255,255,255), A['xy'], tMag, 1)
+                        pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag/2.0, 1)
+                        pygame.draw.circle(lcd, (255,255,255), A['xy'], tMag/2.0, 1)
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,BLACK)
                         lcd.blit(Asurf,shadow)
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,WHITE)
@@ -172,6 +179,18 @@ class heat:
         AVG[spot]['xy'] = xy
         self.AVGprint = True
 
+    def setMINMAXspots(self) :
+        self.AVGprint = True
+        self.MINMAXspots = True
+        
+    def clearSpots(self):
+        for A in self.AVG:
+            A['spot'] = 0
+            A['xy'] = (0,0)
+            A['print'] = 0
+        self.AVGprint = False
+        self.MINMAXspots = False
+
     def xyTsensor(self, xy):
         # return sensor number for a given display x,y
         tMag = self.tMag
@@ -181,29 +200,34 @@ class heat:
         yT = int(xyT[1])
         return tIndex[xT][yT]
 
-    def toggleAVGprint(self) :
-        self.AVGprint = not self.AVGprint
-        
     #----------------------------------
     # color mapping
     #----------------------------------
     def map2pixel(self,x):
-        MINTEMP = self.MINTEMP
-        MAXTEMP = self.MAXTEMP
+        loTemp = self.loTemp
+        hiTemp = self.hiTemp
         COLORDEPTH = self.COLORDEPTH
         constrain = self.constrain
 
-        cindex = (x - MINTEMP) * (COLORDEPTH - 0) / (MAXTEMP - MINTEMP) + 0
+        cindex = (x - loTemp) * (COLORDEPTH - 0) / (hiTemp - loTemp) + 0
         return self.colormap[constrain(int(cindex), 0, COLORDEPTH - 1) ]
 
-    def incrMINMAX( self, incr ) :
-        self.MINTEMP,self.MAXTEMP = np.add( (self.MINTEMP,self.MAXTEMP), incr )
-        self.MINTEMP,self.MAXTEMP = np.clip( (self.MINTEMP,self.MAXTEMP), 0, 80)
-        if self.MINTEMP > self.MAXTEMP:
-            self.MINTEMP = self.MAXTEMP
-        if self.MAXTEMP < self.MINTEMP:
-            self.MAXTEMP = self.MINTEMP
-
+    def incrLoTemp( self, incr) :
+        if incr:
+            self.loTemp += incr
+            self.loTemp = min(self.hiTemp,max(0,self.loTemp))
+            self.loTempAuto = False
+        else:
+            self.loTempAuto = not self.loTempAuto
+        
+    def incrHiTemp( self, incr) :
+        if incr:
+            self.hiTemp += incr
+            self.hiTemp = min(80,max(self.hiTemp,self.loTemp))
+            self.hiTempAuto = False
+        else:
+            self.hiTempAuto = not self.hiTempAuto
+        
     #----------------------------------
     # Themes
     #----------------------------------
