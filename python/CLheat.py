@@ -9,9 +9,7 @@ import math
 class heat:
 
     loTemp = (68 - 32) / 1.8
-    loTempAuto = False
     hiTemp = (100 - 32) / 1.8
-    hiTempAuto = False
     theme = 0
 
     COLORDEPTH = 1024
@@ -94,11 +92,6 @@ class heat:
             pass
 
         if dataReady:   # if it's still ready: no errors during read.
-            if self.hiTempAuto:
-                self.hiTemp = max(temps)
-            if self.loTempAuto:
-                self.loTemp = min(temps)
-
             if self.MINMAXspots :
                 sensor = temps.index(min(temps))
                 x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
@@ -146,8 +139,8 @@ class heat:
             for A in self.AVG:
                 if A['spot']:
                     A['raw'][self.AVGindex] = temps[A['spot']]
-                    #A['print'] = C2F(sum(A['raw'])/AVGdepth)
-                    A['print'] = C2F(A['raw'][self.AVGindex])
+                    A['print'] = C2F(sum(A['raw'])/AVGdepth)
+                    #A['print'] = C2F(A['raw'][self.AVGindex])
                     if A['xy'] != (0,0) :
                         shadow = np.subtract(A['xy'],1)
                         pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag/2.0, 1)
@@ -215,18 +208,16 @@ class heat:
     def incrLoTemp( self, incr) :
         if incr:
             self.loTemp += incr
-            self.loTemp = min(self.hiTemp,max(0,self.loTemp))
-            self.loTempAuto = False
+            self.loTemp = min(self.hiTemp-1,max(0,self.loTemp))
         else:
-            self.loTempAuto = not self.loTempAuto
+            self.loTemp = min(self.temps)
         
     def incrHiTemp( self, incr) :
         if incr:
             self.hiTemp += incr
-            self.hiTemp = min(80,max(self.hiTemp,self.loTemp))
-            self.hiTempAuto = False
+            self.hiTemp = min(80,max(self.hiTemp,self.loTemp+1))
         else:
-            self.hiTempAuto = not self.hiTempAuto
+            self.hiTemp = max(self.temps)
         
     #----------------------------------
     # Themes

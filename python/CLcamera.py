@@ -58,8 +58,8 @@ class camera:
             camImage = pygame.transform.laplacian(self.getCameraScaled())
             self.overlay.fill((0,0,0))
             #pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-            #pygame.transform.threshold(self.overlay,camImage,(0,0,0),(64,64,64),(255,255,255),1)
-            pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(127,127,127),1)
+            pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(255,255,255),1)
+            #pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(127,127,127),1)
             # offset camera to match heat image
             overlayRect = self.overlay.get_rect(center=lcdRect.center)
             pygame.Rect.move_ip(overlayRect,-self.camOffsetX,-self.camOffsetY)
