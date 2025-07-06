@@ -28,6 +28,8 @@ class heat:
 
     pygame.font.init()
     font = pygame.font.Font(None, 30)
+
+    readCount = 0
        
     #----------------------------------
     #----------------------------------
@@ -80,6 +82,7 @@ class heat:
             dataReady = mlx.dataReady()
             if dataReady:
                 mlx.getFrame(temps)
+                self.readCount += 1
         except RuntimeError as err:
             print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
             sys.exit(1)

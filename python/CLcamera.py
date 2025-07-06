@@ -3,6 +3,9 @@ import math
 import numpy as np
 
 class camera:
+
+    readCount = 0
+
     def __init__(self, videoDev, camSize, displaySize, offset=(0,0), camFOV=45, heatFOV=45):
         (self.width, self.height) = displaySize
         (self.camOffsetX, self.camOffsetY) = offset
@@ -32,6 +35,7 @@ class camera:
         if scale == None:
             scale = self.imageScale
         # block until read
+        self.readCount += 1
         return pygame.transform.scale(self.cam.get_image(),(int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)))
 
     def incrOffset(self, incr) :

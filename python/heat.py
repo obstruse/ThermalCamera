@@ -144,13 +144,13 @@ def main() :
     mlx.setTheme(theme)
 
     frameStart = time.time()
+    frameCount = 0
     #----------------------------------
     #----------------------------------
     # loop...
     while(flags.running):
 
-            #print(f"frame ms: {int((time.time() - frameStart) * 1000)} FPS: {int(1/(time.time() - frameStart))}")
-            frameStart = time.time()
+            #frameStart = time.time()
 
             #----------------------------------
             # scan shutter button
@@ -202,6 +202,15 @@ def main() :
             #----------------------------------
             # display
             pygame.display.update()
+
+            frameCount += 1
+            if frameCount > 40:
+                T = time.time() - frameStart
+                print(f"Frames/sec: {int(frameCount/T)}, MLX/sec: {int(mlx.readCount/T)}, CAM/sec: {int(cam.readCount/T)}")
+                frameCount = 0
+                mlx.readCount = 0
+                cam.readCount = 0
+                frameStart = time.time()
 
 
     cam.stop()
@@ -260,7 +269,7 @@ class save:
 
 #------------------------------------------------
 class flags:  
-    mode = 1
+    mode = 3
     running = True
 
     def incr(mode=0, imageCapture=False, streamCapture=False, running=False):
