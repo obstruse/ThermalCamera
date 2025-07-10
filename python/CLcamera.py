@@ -1,10 +1,14 @@
-import pygame.camera
+#import pygame.camera
+import pygame
+import cv2
 import math
 import numpy as np
 
+CV2 = False
 class camera:
 
     readCount = 0
+    ready = False
 
     def __init__(self, videoDev, camSize, displaySize, offset=(0,0), camFOV=45, heatFOV=45):
         (self.width, self.height) = displaySize
@@ -13,12 +17,26 @@ class camera:
         self.camFOV = camFOV
 
         # initialize camera
-        pygame.camera.init()
-        self.cam = pygame.camera.Camera(videoDev,camSize)  # actual camera resolution may be different
-        self.cam.start()
-        (self.camWidth,self.camHeight) = self.cam.get_size()
+        if CV2:
+            import cv2
+            self.cam = cv2.VideoCapture(0,cv2.CAP_V4L2)             # device number...
+            self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, camSize[0])
+            self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camSize[1])
+            self.camWidth = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)
+            self.camHeight = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)    # are they different? need int?
+            print(f"Cam width/height: {self.camWidth},{self.camHeight}")
+            self.cam.set(cv2.CAP_PROP_FPS,30)                       # try for 30 FPS
+            print(f"Cam FPS: {self.cam.get(cv2.CAP_PROP_FPS)}")     # did it work?
+
+        else:
+            import pygame.camera
+            pygame.camera.init()
+            self.cam = pygame.camera.Camera(videoDev,camSize)  # actual camera resolution may be different
+            self.cam.start()
+            (self.camWidth,self.camHeight) = self.cam.get_size()
+            
         self.setCameraFOV(camFOV)
-        
+            
     #----------------------------------
     def setCameraFOV(self,camFOV) :
         self.camFOV = camFOV
@@ -36,7 +54,19 @@ class camera:
             scale = self.imageScale
         # block until read
         self.readCount += 1
-        return pygame.transform.scale(self.cam.get_image(),(int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)))
+        self.ready = True
+
+        if CV2:
+            if self.cam.grab() :
+                ret, array = self.cam.retrieve()
+            else:
+                print("Not Ready")
+            #ret, array = self.cam.read()
+            array = cv2.resize( array, (int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)) )
+            array = cv2.cvtColor(array, cv2.COLOR_BGR2RGB)
+            return pygame.image.frombuffer(array.tobytes(), array.shape[1::-1], 'RGB')
+        else:
+            return pygame.transform.scale(self.cam.get_image(),(int(self.width*scale), int(self.width*(self.camHeight/self.camWidth)*scale)))
 
     def incrOffset(self, incr) :
         self.camOffsetX, self.camOffsetY = np.add( (self.camOffsetX, self.camOffsetY), incr)
@@ -50,6 +80,7 @@ class camera:
 
     def getImage(self, lcd, mode=0) :
         lcdRect = lcd.get_rect()
+        self.ready = False
         if mode == 0:
             # camera base layer
             camImage = self.getCameraScaled()
@@ -82,5 +113,8 @@ class camera:
             pass
 
     def stop(self) :
-        self.cam.stop()
+        if CV2:
+            self.cam.release()
+        else:
+            self.cam.stop()
 

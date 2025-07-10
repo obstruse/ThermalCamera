@@ -82,8 +82,8 @@ def main() :
         K_EQUALS: {"handler":lambda: cam.setCameraFOV(cam.camFOV+1), "desc":"Camera FOV: Increment"},
         K_MINUS: {"handler":lambda: cam.setCameraFOV(cam.camFOV-1), "desc":"Camera FOV: Decrement"},
 
-        K_PAGEUP: {"handler":lambda: mlx.incrRefreshRate(1), "desc":"Refresh Rate: Increment"},
-        K_PAGEDOWN: {"handler":lambda: mlx.incrRefreshRate(-1), "desc":"Refresh Rate: Decrement"},
+        K_PAGEUP: {"handler":lambda: mlx.incr(refresh_rate=1), "desc":"Refresh Rate: Increment"},
+        K_PAGEDOWN: {"handler":lambda: mlx.incr(refresh_rate=-1), "desc":"Refresh Rate: Decrement"},
 
         K_v:    {"handler":lambda: mlx.setMINMAXspots(), "desc":"Display MIN/MAX values"},
         K_c:    {"handler":lambda: mlx.clearSpots(), "desc":"Spot Clear"},
@@ -94,7 +94,7 @@ def main() :
         K_s:    {"handler":lambda: save.incr(streamCapture=True),"desc":"Stream Capture"},
         K_i:    {"handler":lambda: save.incr(imageCapture=True),"desc":"Image Capture"},
         K_w:    {"handler":lambda: writeConfig(config,cam),"desc":"Write config.ini"},
-        K_f:    {"handler":lambda: print(0),"desc":"Save Spot readings to file"},
+        K_f:    {"handler":lambda: mlx.incr(fileCapture=True),"desc":"Save Spot readings to file"},
 
         K_1:    {"handler":lambda: mlx.incrLoTemp(-1), "desc":"Lo temp Decrement"},
         K_KP1:  {"handler":lambda: mlx.incrLoTemp(-1), "desc":"Lo temp Decrement"},
@@ -143,76 +143,83 @@ def main() :
 
     mlx.setTheme(theme)
 
-    frameStart = time.time()
-    frameCount = 0
+    ticTime = pygame.time.Clock()
+
+    loopStart = time.time()
+    loopCount = 0
     #----------------------------------
     #----------------------------------
     # loop...
     while(flags.running):
 
-            #frameStart = time.time()
+        #----------------------------------
+        # scan shutter button
+        if SHUTTER :
+            try :
+                Event, nonEvent, nonEvent = select.select([shutter],[], [], 0 )
+                if Event :
+                    for e in shutter.read():
+                        if e.type == ecodes.EV_KEY and e.value == 1:
+                            if e.code == ecodes.ecodes['KEY_VOLUMEDOWN'] :
+                                pygame.event.post(streamEvent)
+                            if e.code == ecodes.ecodes['KEY_VOLUMEUP'] :
+                                pygame.event.post(captureEvent)
 
-            #----------------------------------
-            # scan shutter button
-            if SHUTTER :
-                try :
-                    Event, nonEvent, nonEvent = select.select([shutter],[], [], 0 )
-                    if Event :
-                        for e in shutter.read():
-                            if e.type == ecodes.EV_KEY and e.value == 1:
-                                if e.code == ecodes.ecodes['KEY_VOLUMEDOWN'] :
-                                    pygame.event.post(streamEvent)
-                                if e.code == ecodes.ecodes['KEY_VOLUMEUP'] :
-                                    pygame.event.post(captureEvent)
+            except OSError as err:
+                print(f"Shutter Button Unavailable:{err}")
+                SHUTTER = False
 
-                except OSError as err:
-                    print(f"Shutter Button Unavailable:{err}")
-                    SHUTTER = False
+        #----------------------------------
+        # scan events
+        for event in pygame.event.get():
+            if (event.type == MOUSEBUTTONDOWN):
+                if event.button <= 3 :
+                    pos = event.pos
+                    mlx.setSpots(event.button,pos)
 
-            #----------------------------------
-            # scan events
-            for event in pygame.event.get():
-                if (event.type == MOUSEBUTTONDOWN):
-                    if event.button <= 3 :
-                        pos = event.pos
-                        mlx.setSpots(event.button,pos)
+            if event.type == KEYDOWN:
+                key = K.get(event.key,K[0])
+                key['handler']()
+            
+        #----------------------------------
+        #----------------------------------
+        # get heat layer
+        mlx.getImage(lcd, flags.mode)
 
-                if event.type == KEYDOWN:
-                    key = K.get(event.key,K[0])
-                    key['handler']()
-                
-            #----------------------------------
-            #----------------------------------
-            # get heat layer
-            mlx.getImage(lcd, flags.mode)
+        #----------------------------------
+        # add image layer
+        cam.getImage(lcd, flags.mode)
 
-            #----------------------------------
-            # add image layer
-            cam.getImage(lcd, flags.mode)
+        #----------------------------------
+        # add spots overlay
+        mlx.getSpots(lcd)
+        mlx.fileSpots()
 
-            #----------------------------------
-            # add spots overlay
-            mlx.getSpots(lcd)
+        #----------------------------------
+        # capture frame or stream to file (no overlay)
+        save.image(lcd)
+        save.stream(lcd, mlx, cam)
 
-            #----------------------------------
-            # capture frame or stream to file (no overlay)
-            save.image(lcd)
-            save.stream(lcd)
+        #----------------------------------
+        # display
+        pygame.display.update()
+        ticTime.tick(40)
 
-            #----------------------------------
-            # display
-            pygame.display.update()
-
-            frameCount += 1
-            if frameCount > 40:
-                T = time.time() - frameStart
-                print(f"Frames/sec: {int(frameCount/T)}, MLX/sec: {int(mlx.readCount/T)}, CAM/sec: {int(cam.readCount/T)}")
-                frameCount = 0
-                mlx.readCount = 0
-                cam.readCount = 0
-                frameStart = time.time()
-
-
+        #----------------------------------
+        #----------------------------------
+        # stats
+        loopCount += 1
+        T = time.time() - loopStart
+        
+        if T > 5:
+            print(f"Loop/sec: {int(loopCount/T)}, MLX/sec: {int(mlx.readCount/T)}, CAM/sec: {int(cam.readCount/T)}")
+            loopCount = 0
+            mlx.readCount = 0
+            cam.readCount = 0
+            loopStart = time.time()
+        #----------------------------------
+        #----------------------------------
+        
     cam.stop()
     pygame.quit()
 
@@ -238,24 +245,27 @@ class save:
         if save.imageCapture :
             save.imageCapture = False
             save.streamCapture = False
-            fileName = "%s/heat%s.jpg" % (os.path.expanduser('~/Pictures'), time.strftime("%Y%m%d-%H%M%S",time.localtime()) )
+            imageDir = "capture/images"
+            os.makedirs(imageDir, exist_ok=True)
+            fileName = f"{imageDir}/{time.strftime('heat-%Y%m%d-%H%M%S',time.localtime())}.jpg"
             pygame.image.save(lcd, fileName)
             print(f"Image saved to: {fileName}")
 
-    def stream(lcd):
+    def stream(lcd, mlx, cam):
         # capture continues until stopped
-        if save.streamCapture :
+        if save.streamCapture:
             if save.fileNum == 0 :
                 save.streamStart = time.time()
                 # store in subdirectory of working directory
-                save.streamDir = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-                os.mkdir(save.streamDir)
+                save.streamDir = time.strftime("capture/heat-%Y%m%d-%H%M%S", time.localtime())
+                os.makedirs(save.streamDir)
                 print("Capturing stream...")
 
-            #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
-            fileName = f"{save.streamDir}/{save.fileNum:04d}.jpg"
-            save.fileNum = save.fileNum + 1
-            pygame.image.save(lcd, fileName)
+            if  mlx.ready or cam.ready:     # only if there's something to save...
+                #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
+                fileName = f"{save.streamDir}/{save.fileNum:04d}.jpg"
+                save.fileNum = save.fileNum + 1
+                pygame.image.save(lcd, fileName)
 
         elif save.fileNum != 0 :
             fps = save.fileNum / (time.time() - save.streamStart)

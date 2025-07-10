@@ -5,6 +5,7 @@ import pygame
 import sys
 import time
 import math
+import os
 
 class heat:
 
@@ -22,14 +23,15 @@ class heat:
     AVGspots = 5
     AVGdepth = 4
     AVGindex = 0
-    AVGfile = ""
     AVGfd = 0
     AVGprint = False
+    fileCapture = False
 
     pygame.font.init()
     font = pygame.font.Font(None, 30)
 
     readCount = 0
+    ready = False
        
     #----------------------------------
     #----------------------------------
@@ -79,22 +81,22 @@ class heat:
         #   if MLX doesnot have data ready, use last read
 
         try:
-            dataReady = mlx.dataReady()
-            if dataReady:
+            self.ready = False
+            #dataReady = mlx.dataReady()
+            if mlx.dataReady():
                 mlx.getFrame(temps)
                 self.readCount += 1
+                self.ready = True
         except RuntimeError as err:
             print(f"\n\n{err}\n\nMake sure that I2C baudrate is set to 1MHz in /boot/config.txt:\ndtparam=i2c_arm=on,i2c_arm_baudrate=1000000\n\n")
             sys.exit(1)
         except ValueError:
-            dataReady = False
             pass
         except OSError as err:
-            dataReady = False
             print(f"{err}")
             pass
 
-        if dataReady:   # if it's still ready: no errors during read.
+        if self.ready:   # there was a valid read
             if self.MINMAXspots :
                 sensor = temps.index(min(temps))
                 x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
@@ -113,7 +115,7 @@ class heat:
 
         if mode :
             # heat base layer
-            if dataReady :  # there was a valid read
+            if self.ready :  # there was a valid read
                 # map temperatures and create pixels
                 #pixels = np.array(list(map(self.map2pixel, temps))).reshape((32,24,3), order='F')
                 pixels = np.array([self.map2pixel(p) for p in temps]).reshape((32,24,3), order='F')
@@ -153,22 +155,32 @@ class heat:
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,WHITE)
                         lcd.blit(Asurf,A['xy'])
 
-    def fileSpots(self, file):
-        pass
-        # at some point there will be file output as well
-        #if AVGprint :
-        #    if AVGfile == "" :
-        #        AVGfile = time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())
-        #        AVGfd = open(AVGfile, "a")
-        #        refresh = 2 ** (mlx.refresh_rate-1)
-        #        print(f"{mlx.version}, Refresh Rate: {2**(mlx.refresh_rate-1)}Hz", file=AVGfd)
+    #----------------------------------
+    def fileSpots(self):
+        AVG = self.AVG
+        if self.fileCapture:
+            # output to file requested
+            if self.AVGfd == 0 :
+                # don't have an opened file to write to yet
+                fileDir = "capture/average"
+                os.makedirs(fileDir, exist_ok=True)
+                fileName = f"{fileDir}/{time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())}"
+                print(f"Saving averages to: {fileName}")
+                self.AVGfd = open(fileName, "a")
+                refresh = 2 ** (self.refresh_rate-1)
+                print(f"{self.mlx.version}, Refresh Rate: {refresh}Hz", file=self.AVGfd)
 
-        #    print(*[A['print'] for A in AVG],subPage)
-        #    print(*[A['print'] for A in AVG],subPage, file=AVGfd)
-        #elif AVGfile != "" :
-        #    AVGfd.close()
-        #    AVGfile = ""
+            if self.AVGprint and self.ready:
+                # data ready, and there's an AVG spot printed on screen
+                print(*[A['print'] for A in AVG], file=self.AVGfd)      # timestamp?
 
+        elif self.AVGfd != 0 :
+            # file output not requested, but there's an output file open
+            self.AVGfd.close()
+            self.AVGfd = 0
+            print("Average file closed")
+
+    #----------------------------------
     def setSpots(self,spot,xy):
         AVG = self.AVG
         AVG[spot]['spot'] = self.xyTsensor(xy)
@@ -327,7 +339,13 @@ class heat:
         self.mlx.refresh_rate = rate
         print(f"Refresh Rate: { 2 ** (self.mlx.refresh_rate-1) }")
 
-    def incrRefreshRate(self,incr) :
-        self.refresh_rate = self.refresh_rate + incr
+    #def incrRefreshRate(self,incr) :
+    #    self.refresh_rate = self.refresh_rate + incr
+
+    def incr(self, fileCapture=False, refresh_rate=0) :
+        print(f"fileCapture: {fileCapture}, self.fileCapture: {self.fileCapture}, refresh_rate: {refresh_rate}")
+        self.fileCapture = self.fileCapture != fileCapture
+        if refresh_rate != 0 :
+            self.refresh_rate = self.refresh_rate + refresh_rate
 
 RefreshRate = MLX90640.RefreshRate
