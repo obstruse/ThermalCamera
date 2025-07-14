@@ -9,6 +9,7 @@ class camera:
 
     readCount = 0
     ready = False
+    edge = 0        # index for edge detect color
 
     def __init__(self, videoDev, camSize, displaySize, offset=(0,0), camFOV=45, heatFOV=45):
         (self.width, self.height) = displaySize
@@ -36,6 +37,7 @@ class camera:
             (self.camWidth,self.camHeight) = self.cam.get_size()
             
         self.setCameraFOV(camFOV)
+        self.setEdgeColor(self.edge)
             
     #----------------------------------
     def setCameraFOV(self,camFOV) :
@@ -92,9 +94,7 @@ class camera:
             # edge detect camera overlay
             camImage = pygame.transform.laplacian(self.getCameraScaled())
             self.overlay.fill((0,0,0))
-            #pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(1,1,1),1)
-            pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(255,255,255),1)
-            #pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),(127,127,127),1)
+            pygame.transform.threshold(self.overlay,camImage,(0,0,0),(40,40,40),self.edgeColor,1)
             # offset camera to match heat image
             overlayRect = self.overlay.get_rect(center=lcdRect.center)
             pygame.Rect.move_ip(overlayRect,-self.camOffsetX,-self.camOffsetY)
@@ -111,6 +111,11 @@ class camera:
 
         if mode == 3:
             pass
+
+    def setEdgeColor(self,edge) :
+        E = [(1,1,1),(128,128,128),(255,255,255)]
+        self.edge = edge % len(E)
+        self.edgeColor = E[self.edge]
 
     def stop(self) :
         if CV2:

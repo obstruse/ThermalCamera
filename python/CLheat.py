@@ -18,7 +18,8 @@ class heat:
 
     temps = [0] * 768
 
-    MINMAXspots = False
+    MINspots = False
+    MAXspots = False
 
     AVGspots = 5
     AVGdepth = 4
@@ -97,10 +98,11 @@ class heat:
             pass
 
         if self.ready:   # there was a valid read
-            if self.MINMAXspots :
+            if self.MINspots :
                 sensor = temps.index(min(temps))
                 x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
                 self.setSpots(0,(x,y))
+            if self.MAXspots :
                 sensor = temps.index(max(temps))
                 x, y = np.multiply(np.add(np.argwhere(self.tIndex == sensor),(0.5,0.5)),(self.tMag,self.tMag))[0]
                 self.setSpots(4,(x,y))
@@ -187,17 +189,20 @@ class heat:
         AVG[spot]['xy'] = xy
         self.AVGprint = True
 
-    def setMINMAXspots(self) :
+    def setMINMAXspots(self, MINspots=False, MAXspots=False) :
         self.AVGprint = True
-        self.MINMAXspots = True
+        self.MINspots = self.MINspots or MINspots
+        self.MAXspots = self.MAXspots or MAXspots
         
     def clearSpots(self):
+        # the only way to unset a spot is to clear all spots
         for A in self.AVG:
             A['spot'] = 0
             A['xy'] = (0,0)
             A['print'] = 0
         self.AVGprint = False
-        self.MINMAXspots = False
+        self.MINspots = False
+        self.MAXspots = False
 
     def xyTsensor(self, xy):
         # return sensor number for a given display x,y

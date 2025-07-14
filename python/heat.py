@@ -85,10 +85,11 @@ def main() :
         K_PAGEUP: {"handler":lambda: mlx.incr(refresh_rate=1), "desc":"Refresh Rate: Increment"},
         K_PAGEDOWN: {"handler":lambda: mlx.incr(refresh_rate=-1), "desc":"Refresh Rate: Decrement"},
 
-        K_v:    {"handler":lambda: mlx.setMINMAXspots(), "desc":"Display MIN/MAX values"},
         K_c:    {"handler":lambda: mlx.clearSpots(), "desc":"Spot Clear"},
+        K_v:    {"handler":lambda: mlx.setMINMAXspots(MAXspots=True), "desc":"Track MAX values"},
+        K_b:    {"handler":lambda: mlx.setMINMAXspots(MINspots=True), "desc":"Track MIN values"},
         K_t:    {"handler":lambda: mlx.setTheme(mlx.theme + 1), "desc":"Step through Colormap Themes"},
-        K_e:    {"handler":lambda: print(0),"desc":"Change Edge Color"},
+        K_e:    {"handler":lambda: cam.setEdgeColor(cam.edge + 1),"desc":"Change Edge Color"},
         K_m:    {"handler":lambda: flags.incr(mode=1), "desc":"Step through Display Modes"},
         
         K_s:    {"handler":lambda: save.incr(streamCapture=True),"desc":"Stream Capture"},
