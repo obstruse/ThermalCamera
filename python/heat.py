@@ -86,6 +86,7 @@ def main() :
         K_PAGEDOWN: {"handler":lambda: mlx.incr(refresh_rate=-1), "desc":"Refresh Rate: Decrement"},
 
         K_c:    {"handler":lambda: mlx.clearSpots(), "desc":"Spot Clear"},
+        K_p:    {"handler":lambda: mlx.incr(AVGprint=True), "desc":"Display Spot Values"},
         K_v:    {"handler":lambda: mlx.setMINMAXspots(MAXspots=True), "desc":"Track MAX values"},
         K_b:    {"handler":lambda: mlx.setMINMAXspots(MINspots=True), "desc":"Track MIN values"},
         K_t:    {"handler":lambda: mlx.setTheme(mlx.theme + 1), "desc":"Step through Colormap Themes"},
@@ -111,7 +112,10 @@ def main() :
         K_9:    {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
         K_KP9:  {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
 
-        0:      {"handler":lambda: noKey(event.unicode)}
+        K_F1:   {"handler":lambda: preset(mlx,1), "desc":"Preset 1"},
+        K_F2:   {"handler":lambda: preset(mlx,2), "desc":"Preset 2"},
+
+        0:      {"handler":lambda: noKey(event.unicode,event.key,event.mod)}
     }
 
     # Might be nice to display a help screen, grouped by function?
@@ -285,11 +289,23 @@ class flags:
 
     def incr(mode=0, imageCapture=False, streamCapture=False, running=False):
         flags.mode = (flags.mode + mode) % 4
+        if mode:
+            print(f"mode: {flags.mode}")
         flags.running = flags.running != running
-        
+
+def preset(mlx,button):
+    if button == 1:
+        flags.mode = 0
+        mlx.setTheme(0)
+
+    if button == 2:
+        flags.mode = 1
+        mlx.setTheme(3)
+
+
 #------------------------------------------------
-def noKey(key):
-    print(f"Undefined key: {key}")
+def noKey(unicode,key,mod):
+    print(f"Undefined key: {unicode} value: {key} mod: {mod}")
 
 #------------------------------------------------
 #------------------------------------------------

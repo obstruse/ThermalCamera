@@ -347,9 +347,10 @@ class heat:
     #def incrRefreshRate(self,incr) :
     #    self.refresh_rate = self.refresh_rate + incr
 
-    def incr(self, fileCapture=False, refresh_rate=0) :
-        print(f"fileCapture: {fileCapture}, self.fileCapture: {self.fileCapture}, refresh_rate: {refresh_rate}")
+    def incr(self, fileCapture=False, AVGprint=False, refresh_rate=0) :
+        #print(f"fileCapture: {fileCapture}, self.fileCapture: {self.fileCapture}, refresh_rate: {refresh_rate}")
         self.fileCapture = self.fileCapture != fileCapture
+        self.AVGprint = self.AVGprint != AVGprint
         if refresh_rate != 0 :
             self.refresh_rate = self.refresh_rate + refresh_rate
 
