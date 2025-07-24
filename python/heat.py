@@ -112,8 +112,8 @@ def main() :
         K_9:    {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
         K_KP9:  {"handler":lambda: mlx.incrHiTemp(1), "desc":"Hi Temp Increment"},
 
-        K_F1:   {"handler":lambda: preset(mlx,1), "desc":"Preset 1"},
-        K_F2:   {"handler":lambda: preset(mlx,2), "desc":"Preset 2"},
+        K_F1:   {"handler":lambda: preset(mlx,cam,1), "desc":"Preset 1"},
+        K_F2:   {"handler":lambda: preset(mlx,cam,2), "desc":"Preset 2"},
 
         0:      {"handler":lambda: noKey(event.unicode,event.key,event.mod)}
     }
@@ -150,8 +150,8 @@ def main() :
 
     ticTime = pygame.time.Clock()
 
-    loopStart = time.time()
-    loopCount = 0
+    #loopStart = time.time()
+    #loopCount = 0
     #----------------------------------
     #----------------------------------
     # loop...
@@ -213,15 +213,15 @@ def main() :
         #----------------------------------
         #----------------------------------
         # stats
-        loopCount += 1
-        T = time.time() - loopStart
-        
-        if T > 5:
-            print(f"Loop/sec: {int(loopCount/T)}, MLX/sec: {int(mlx.readCount/T)}, CAM/sec: {int(cam.readCount/T)}")
-            loopCount = 0
-            mlx.readCount = 0
-            cam.readCount = 0
-            loopStart = time.time()
+        #loopCount += 1
+        #T = time.time() - loopStart
+        #
+        #if T > 5:
+        #    print(f"Loop/sec: {int(loopCount/T)}, MLX/sec: {int(mlx.readCount/T)}, CAM/sec: {int(cam.readCount/T)}")
+        #    loopCount = 0
+        #    mlx.readCount = 0
+        #    cam.readCount = 0
+        #    loopStart = time.time()
         #----------------------------------
         #----------------------------------
         
@@ -293,7 +293,7 @@ class flags:
             print(f"mode: {flags.mode}")
         flags.running = flags.running != running
 
-def preset(mlx,button):
+def preset(mlx,cam,button):
     if button == 1:
         flags.mode = 0
         mlx.setTheme(0)
@@ -301,6 +301,8 @@ def preset(mlx,button):
     if button == 2:
         flags.mode = 1
         mlx.setTheme(3)
+        mlx.incrLoTemp(0)
+        cam.setEdgeColor(2)
 
 
 #------------------------------------------------

@@ -115,6 +115,7 @@ class camera:
     def setEdgeColor(self,edge) :
         E = [(1,1,1),(128,128,128),(255,255,255)]
         self.edge = edge % len(E)
+        print(f"cam.edge: {self.edge}")
         self.edgeColor = E[self.edge]
 
     def stop(self) :

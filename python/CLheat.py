@@ -149,11 +149,15 @@ class heat:
                     A['print'] = C2F(sum(A['raw'])/AVGdepth)
                     #A['print'] = C2F(A['raw'][self.AVGindex])
                     if A['xy'] != (0,0) :
-                        shadow = np.subtract(A['xy'],1)
-                        pygame.draw.circle(lcd, (0,0,0)      , shadow,  tMag/2.0, 1)
+                        (x,y) = A['xy']
+                        pygame.draw.circle(lcd, (0,0,0)      , A['xy'],  (tMag/2.0)+1, 3)
                         pygame.draw.circle(lcd, (255,255,255), A['xy'], tMag/2.0, 1)
+
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,BLACK)
-                        lcd.blit(Asurf,shadow)
+                        lcd.blit(Asurf,(x+1,y+1))
+                        lcd.blit(Asurf,(x-1,y-1))
+                        lcd.blit(Asurf,(x-1,y+1))
+                        lcd.blit(Asurf,(x+1,y-1))
                         Asurf = font.render(f"  {C2F(temps[A['spot']]):.1f}",True,WHITE)
                         lcd.blit(Asurf,A['xy'])
 
