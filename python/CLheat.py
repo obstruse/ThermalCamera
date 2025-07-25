@@ -22,12 +22,11 @@ class heat:
     MAXspots = False
 
     AVGspots = 5
-    AVGdepth = 4
+    AVGdepth = 1
     AVGindex = 0
     AVGfd = 0
     AVGprint = False
     fileCapture = False
-
     pygame.font.init()
     font = pygame.font.Font(None, 30)
 
@@ -59,7 +58,7 @@ class heat:
         self.mlx.refresh_rate = refresh
         print(f"{self.mlx.version}, refresh {2**(self.mlx.refresh_rate-1)} Hz")
 
-        self.setTheme(2)
+        self.setTheme(3)
 
         self.heatImage = pygame.surface.Surface((0,0))
 
@@ -170,15 +169,16 @@ class heat:
                 # don't have an opened file to write to yet
                 fileDir = "capture/average"
                 os.makedirs(fileDir, exist_ok=True)
-                fileName = f"{fileDir}/{time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())}"
+                refresh = 2 ** (self.refresh_rate-1)
+                fileName = f"{fileDir}/{refresh}hz-{time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())}"
+                self.fileTime = time.time()
                 print(f"Saving averages to: {fileName}")
                 self.AVGfd = open(fileName, "a")
-                refresh = 2 ** (self.refresh_rate-1)
-                print(f"{self.mlx.version}, Refresh Rate: {refresh}Hz", file=self.AVGfd)
+                print(f"{self.mlx.version}, Refresh Rate: {refresh}Hz, Depth: {self.AVGdepth}", file=self.AVGfd)
 
             if self.AVGprint and self.ready:
                 # data ready, and there's an AVG spot printed on screen
-                print(*[A['print'] for A in AVG], file=self.AVGfd)      # timestamp?
+                print(time.time()-self.fileTime, *[A['print'] for A in AVG], file=self.AVGfd)      # timestamp?
 
         elif self.AVGfd != 0 :
             # file output not requested, but there's an output file open
@@ -235,6 +235,8 @@ class heat:
             self.loTemp = min(self.hiTemp-1,max(0,self.loTemp))
         else:
             self.loTemp = min(self.temps)
+
+        print(f"LoTemp: {self.loTemp}")
         
     def incrHiTemp( self, incr) :
         if incr:
@@ -242,6 +244,8 @@ class heat:
             self.hiTemp = min(80,max(self.hiTemp,self.loTemp+1))
         else:
             self.hiTemp = max(self.temps)
+
+        print(f"HiTemp: {self.hiTemp}")
         
     #----------------------------------
     # Themes

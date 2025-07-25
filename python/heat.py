@@ -114,6 +114,8 @@ def main() :
 
         K_F1:   {"handler":lambda: preset(mlx,cam,1), "desc":"Preset 1"},
         K_F2:   {"handler":lambda: preset(mlx,cam,2), "desc":"Preset 2"},
+        K_F3:   {"handler":lambda: preset(mlx,cam,3), "desc":"Preset 3"},
+        K_F4:   {"handler":lambda: preset(mlx,cam,4), "desc":"Preset 4"},
 
         0:      {"handler":lambda: noKey(event.unicode,event.key,event.mod)}
     }
@@ -296,13 +298,35 @@ class flags:
 def preset(mlx,cam,button):
     if button == 1:
         flags.mode = 0
-        mlx.setTheme(0)
+        print(f"mode: {flags.mode}")
+        mlx.setTheme(3)
 
     if button == 2:
         flags.mode = 1
+        print(f"mode: {flags.mode}")
         mlx.setTheme(3)
         mlx.incrLoTemp(0)
+        mlx.hiTemp = 35
         cam.setEdgeColor(2)
+
+    if button == 3:
+        flags.mode = 1
+        print(f"mode: {flags.mode}")
+        mlx.setTheme(0)
+        mlx.incrLoTemp(0)
+        mlx.incrLoTemp(-3)
+        mlx.hiTemp = 35
+        cam.setEdgeColor(0)
+
+    if button == 4:
+        flags.mode = 1
+        print(f"mode: {flags.mode}")
+        mlx.setTheme(1)
+        mlx.incrLoTemp(0)
+        mlx.incrLoTemp(-3)
+        mlx.hiTemp = 35
+        cam.setEdgeColor(0)
+
 
 
 #------------------------------------------------
