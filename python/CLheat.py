@@ -44,7 +44,6 @@ class heat:
             i2c = i2cSMB.i2cSMB(SMB)
         else:
             try:
-                import RPi.GPIO as GPIO
                 import board
                 import busio
                 i2c = busio.I2C(board.SCL, board.SDA)
