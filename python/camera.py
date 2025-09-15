@@ -11,8 +11,8 @@ from configparser import ConfigParser
 # read config
 config = ConfigParser()
 config.read('config.ini')
-width = config.getint('ThermalCamera','width', fallback=320)
-height = config.getint('ThermalCamera','height', fallback=240)
+width = config.getint('ThermalCamera','camwidth', fallback=320)
+height = config.getint('ThermalCamera','camheight', fallback=240)
 videoDev = config.get('ThermalCamera','videoDev',fallback='/dev/video0')
 
 # initialize display

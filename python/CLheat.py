@@ -53,8 +53,12 @@ class heat:
                 print(f"No I2C bus found: {e}")
                 sys.exit()
 
-        self.mlx = MLX90640.MLX90640(i2c)
-        #mlx = MLX90640.MLX90640m0(i2c)     # original driver
+        try:
+            self.mlx = MLX90640.MLX90640(i2c)
+            #self.mlx = MLX90640.MLX90640m0(i2c)     # original driver
+        except Exception as e:
+            print(f"Error opening MLX90640 device: {e}")
+            sys.exit()
 
         self.mlx.refresh_rate = refresh
         print(f"{self.mlx.version}, refresh {2**(self.mlx.refresh_rate-1)} Hz")
@@ -166,7 +170,7 @@ class heat:
                 # don't have an opened file to write to yet
                 fileDir = "capture/average"
                 os.makedirs(fileDir, exist_ok=True)
-                fileName = f"{fileDir}/{time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())}"
+                fileName = f"{fileDir}/{time.strftime('AVG-%Y%m%d-%H%M%S.dat', time.localtime())}"
                 print(f"Saving averages to: {fileName}")
                 self.AVGfd = open(fileName, "a")
                 refresh = 2 ** (self.refresh_rate-1)
