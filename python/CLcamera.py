@@ -1,8 +1,8 @@
 #import pygame.camera
 import pygame
-import cv2
 import math
 import numpy as np
+import sys
 
 CV2 = False
 class camera:
@@ -18,23 +18,28 @@ class camera:
         self.camFOV = camFOV
 
         # initialize camera
-        if CV2:
-            import cv2
-            self.cam = cv2.VideoCapture(0,cv2.CAP_V4L2)             # device number...
-            self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, camSize[0])
-            self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camSize[1])
-            self.camWidth = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)
-            self.camHeight = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)    # are they different? need int?
-            print(f"Cam width/height: {self.camWidth},{self.camHeight}")
-            self.cam.set(cv2.CAP_PROP_FPS,30)                       # try for 30 FPS
-            print(f"Cam FPS: {self.cam.get(cv2.CAP_PROP_FPS)}")     # did it work?
+        try:
+            if CV2:
+                import cv2
+                self.cam = cv2.VideoCapture(0,cv2.CAP_V4L2)             # device number...
+                self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, camSize[0])
+                self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, camSize[1])
+                self.camWidth = self.cam.get(cv2.CAP_PROP_FRAME_WIDTH)
+                self.camHeight = self.cam.get(cv2.CAP_PROP_FRAME_HEIGHT)    # are they different? need int?
+                print(f"Cam width/height: {self.camWidth},{self.camHeight}")
+                self.cam.set(cv2.CAP_PROP_FPS,30)                       # try for 30 FPS
+                print(f"Cam FPS: {self.cam.get(cv2.CAP_PROP_FPS)}")     # did it work?
 
-        else:
-            import pygame.camera
-            pygame.camera.init()
-            self.cam = pygame.camera.Camera(videoDev,camSize)  # actual camera resolution may be different
-            self.cam.start()
-            (self.camWidth,self.camHeight) = self.cam.get_size()
+            else:
+                import pygame.camera
+                pygame.camera.init()
+                self.cam = pygame.camera.Camera(videoDev,camSize)  # actual camera resolution may be different
+                self.cam.start()
+                (self.camWidth,self.camHeight) = self.cam.get_size()
+
+        except Exception as e:
+            print(f"Unable to initialize camera: {e}")
+            sys.exit()
             
         self.setCameraFOV(camFOV)
         self.setEdgeColor(self.edge)
