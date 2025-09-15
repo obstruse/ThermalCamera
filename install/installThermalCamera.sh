@@ -21,11 +21,5 @@ pip install -q colour
 echo ...numpy python module
 pip install -q numpy
 
-echo ...GPIO python module
-# (Raspberry Pi 4 requires gpio v2.52
-wget -q https://project-downloads.drogon.net/wiringpi-latest.deb
-dpkg -i wiringpi-latest.deb 
-rm -rf wiringpi-latest.deb
-
 echo ' '
 echo Install complete
