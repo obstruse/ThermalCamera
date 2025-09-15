@@ -173,7 +173,7 @@ class heat:
                 fileDir = "capture/average"
                 os.makedirs(fileDir, exist_ok=True)
                 refresh = 2 ** (self.refresh_rate-1)
-                fileName = f"{fileDir}/{refresh}hz-{time.strftime("AVG-%Y%m%d-%H%M%S.dat", time.localtime())}"
+                fileName = f"{fileDir}/{refresh}hz-{time.strftime('AVG-%Y%m%d-%H%M%S.dat', time.localtime())}"
                 self.fileTime = time.time()
                 print(f"Saving averages to: {fileName}")
                 self.AVGfd = open(fileName, "a")
