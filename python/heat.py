@@ -140,7 +140,7 @@ def main() :
         #captureEvent = pygame.event.Event(MOUSEBUTTONUP, button=1, pos=menuCapture.center)
 
         shutter = evdev.InputDevice('/dev/input/shutter')
-        shutter.grab
+        shutter.grab()
 
     except Exception as err:
         print(f"Shutter Button not available: {err}")
