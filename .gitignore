@@ -9,8 +9,7 @@ python/heatAMG88xx.py
 */*.dat
 */*.pyc
 *.pyc
-python/*.png
-*.jpg
-*.png
 python/capture/*
 python/Same_assets/*
+python/graphs/*
+python/work/*
