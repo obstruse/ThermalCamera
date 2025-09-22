@@ -298,11 +298,13 @@ class flags:
 
 def preset(mlx,cam,button):
     if button == 1:
+        # no heat overlay
         flags.mode = 0
         print(f"mode: {flags.mode}")
         mlx.setTheme(3)
 
     if button == 2:
+        # heat overlay, center temp maps to black, white edges
         flags.mode = 1
         print(f"mode: {flags.mode}")
         mlx.setTheme(2)
@@ -311,15 +313,16 @@ def preset(mlx,cam,button):
         cam.setEdgeColor(2)
 
     if button == 3:
+        # heat overlay, bottom temp maps to black, white edges
         flags.mode = 1
         print(f"mode: {flags.mode}")
-        mlx.setTheme(0)
+        mlx.setTheme(3)
         mlx.incrLoTemp(0)
-        mlx.incrLoTemp(-3)
         mlx.hiTemp = 35
-        cam.setEdgeColor(0)
+        cam.setEdgeColor(2)
 
     if button == 4:
+        # heat overlay, continuous gradient, black edges
         flags.mode = 1
         print(f"mode: {flags.mode}")
         mlx.setTheme(1)
