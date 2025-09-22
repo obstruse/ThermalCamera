@@ -175,7 +175,8 @@ ThermalCamera/python/heat.py
 
 You can run the program remotely from an SSH connection, with the heat displayed in an X-window.  Commands are typed in the console window.
 
-![Menu](Images/heat20220622-132440.jpg)
+![](Images/heat-20250921-edit.gif)
+
 
 Keyboard Commands|&nbsp;
 -|-
