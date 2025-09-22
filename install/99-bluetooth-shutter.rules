@@ -1,0 +1,23 @@
+# pair and trust device:
+
+#$ sudo bluetoothctl
+#[bluetooth]# agent on
+#[bluetooth]# default-agent
+#[bluetooth]# pairable on
+#[bluetooth]# scan on
+#[bluetooth]# [NEW] Device FF:FF:12:4B:4E:53 AB Shutter3
+#[bluetooth]# pair FF:FF:12:4B:4E:53
+#[bluetooth]# trust FF:FF:12:4B:4E:53
+#[bluetooth]# quit
+
+#edit this file; change ATTRS{name} to name shown for button (e.g. "AB Shutter3")
+#copy file to /etc/udev/rules.d/99-bluetooth-shutter.rules
+
+KERNEL=="event*", SUBSYSTEM=="input", ATTRS{name}=="AB Shutter3", SYMLINK+="input/shutter"
+
+#sudo udevadm control --reload-rules
+#sudo udevadm trigger
+
+#... reconnect or manually trigger
+#sudo udevadm trigger /dev/input/event9
+#ls -l /dev/input/shutter

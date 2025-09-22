@@ -255,7 +255,7 @@ class heat:
     #----------------------------------
     def setTheme( self,value ) :
         # generate the colormap for the selected theme
-        cmaps = [self.map1, self.map2, self.map3, self.map4]
+        cmaps = [self.map1, self.map2, self.map5, self.map4]
         self.theme = value % len(cmaps)
         cmaps[self.theme]()
         print(f"Theme: {self.theme}")
@@ -303,7 +303,20 @@ class heat:
         (1,0,0))
 
         self.colormap = [(self.gradient2(c/self.COLORDEPTH, cl)) for c in range(self.COLORDEPTH)]
-     
+
+    def map5(self) :
+        # method 5
+        # ... gradient2
+        cl = (
+        (0,0,1),
+        (0,1,1),
+        (0,0,0),
+        (0,0,0),
+        (1,1,0),
+        (1,0,0))
+
+        self.colormap = [(self.gradient2(c/self.COLORDEPTH, cl)) for c in range(self.COLORDEPTH)]
+
     #----------------------------------
     # colormaps utility
     def constrain(self, val, min_val, max_val):

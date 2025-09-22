@@ -7,7 +7,7 @@ MLX90640 Thermal Camera with Edge Detect Video Overlay.
 
 - Enhanced MLX90640 driver with no wait states.
 
-- Eliminated the 'Too many retries' error:  Refresh Rate no long dependant on I2C Transfer Speed.
+- Eliminated the 'Too many retries' error:  Refresh Rate no longer dependant on I2C Transfer Speed.
 
 - MLX90640 can either be connected to the I2C pins on a Raspberry Pi, or connected via the HDMI DDC pins on any computer running Linux.
 
@@ -34,9 +34,9 @@ The cameras need to be mounted flat and as close together as possible:
 ![](Images/PXL_20250911_021926412a.jpg)
 
 The USB camera pictured is 
-["Bare USB Webcam" from Public Lab](https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0) which unfortunately is no longer available. 
+["Bare USB Webcam" from Public Lab](https://publiclab.myshopify.com/collections/bits-bobs/products/webcam-dsk-3-0) (no longer available). 
 
-These will probably work, but with a different FOV:
+These will probably work (untested):
 
 - [Ultra Tiny USB Webcam Camera with GC0307 Sensor](https://www.adafruit.com/product/5733) (it's only $7)
 - [Arducam OV5648](https://www.arducam.com/product/arducam-ov5648-auto-focus-usb-camera-ub0238-6/)
@@ -53,11 +53,13 @@ videoDev = /dev/video0
 Camera Resolution|
 -|
 
-
+Generally, if the final output is 640x480, the camera resolution should be that as well.  Unfortunately, some cameras don't handle the resolution scaling very well.  The camera I'm using for example, has a basic resolution of 800x600.  At that resolution it uses the full sensor and the center of the image (the red '+') aligns with the center of the lens (the circle):
 
 ![](Images/framing.jpg)
 
- 
+Changing the resolution to 640x480 however,  doesn't rescale the image to the new resolution. Instead it cuts a 640x480 region starting at the top left of the sensor.  The result is an image shifted up and to the left, with a 20% narrower field of view.  Makes it difficult to pair with the heat image.
+
+The solution for this camera was to capture at 800x600, then let the program scale to the final size.  You may need to try different resolutions to get the best fit to the heat image.
 
 
 ## Setup
@@ -69,6 +71,7 @@ The installation script installs:
 - pygame
 - colour
 - MLX90640
+- numpy
 
 ```
 git clone https://github.com/obstruse/ThermalCamera.git
@@ -97,6 +100,50 @@ The '5 - D - C' pins along the bottom are the 5V, SDA, and SCL of the I2C interf
 
 To find the I2C bus used by the device, run the `findMLX.sh` script in the `install/` directory.  Enter the bus number in the `config.ini` file (see below)
 
+If the MLX device is not found after plugging it in, try the `xrandr` command to re-scan the HDMI ports.
+
+The Adafruit breakout board works well on Raspberry Pi, and on desktop graphics adapters when there is a monitor connected.  If it's the only device connected, there's a problem: the breakout doesn't assert the 'HPD' signal, the adapter thinks nothing is connected, and power isn't applied to the port.  You can fix this by soldering a 10K resistor between pins 18 and 19:
+
+![](Images/HDMIadapter10K.jpg)
+
+Bluetooth|
+-|
+
+[Wireless Camera Remote Shutter](https://www.amazon.com/dp/B07MR1PHPZ)
+
+#### Pair and Trust device
+
+Look for the bluetooth button, make note of the device name (e.g. 'AB Shutter3'):
+
+```
+$ sudo bluetoothctl
+[bluetooth]# agent on
+[bluetooth]# default-agent
+[bluetooth]# pairable on
+[bluetooth]# scan on
+[bluetooth]# [NEW] Device FF:FF:12:4B:4E:53 AB Shutter3
+[bluetooth]# pair FF:FF:12:4B:4E:53
+[bluetooth]# trust FF:FF:12:4B:4E:53
+[bluetooth]# quit
+```
+#### Create UDEV rule
+
+Place the device name in the `ATTRS(name)` field:
+```
+$ sudo vi /etc/udev/rules.d/99-bluetooth-shutter.rules
+KERNEL=="event*", SUBSYSTEM=="input", ATTRS{name}=="AB Shutter3", SYMLINK+="input/shutter"
+```
+#### Reload and Trigger
+```
+$ sudo udevadm control --reload-rules
+$ sudo udevadm trigger
+```
+
+#### Test
+
+```
+$ ls -l /dev/input/shutter
+```
 ### Configuration
 
 Program settings can be changed by modifying `config.ini` located in the same directory as `heat.py`
@@ -176,6 +223,7 @@ File Capture|
 Files are stored in the `capture` subdirectory:  temperature readings in `capture/average`, still images in `capture/images`, and image streams in a timestamped directory under `capture`.
 
 The captured images in `capture/[timestamp]` can be combined into an MP4 using ffmpeg, for example:
+
 ```
 #!/bin/bash
 
@@ -184,6 +232,19 @@ FPS=$(cat ${DIR}/FPS)
 ffmpeg -loglevel error -framerate ${FPS} -pattern_type glob -i ${DIR}/\*.jpg ${DIR}.mp4
 echo "created: ${DIR}.mp4"
 ```
+Or, convert to GIF:
+
+```
+#!/bin/bash
+
+DIR=$1
+FPS=$(cat ${DIR}/FPS)
+DELAY=$(echo "scale=0; 100 / $FPS" | bc)
+ffmpeg -loglevel error -pattern_type glob -i ${DIR}/\*.jpg -vf scale=320:-1 -r $FPS -f image2pipe -vcodec ppm - \
+   | convert -delay $DELAY -loop 0 - ${DIR}.gif
+echo "created: ${DIR}.gif"
+```
+
 ---
 
 ## Alignment
@@ -208,9 +269,9 @@ To correct for mounting errors and parallax, use the keyboard arrow keys to offs
 
 Thermal Camera with LCD Touchscreen
 
+![Electric Blanket](Images/heat-20250919-165143.gif)
+
 ![Hot Watermelon](Images/heat20220616-094600.gif)
+
 ![PiZero](Images/heat20220613-2059.gif)
 
-![EICO 460](Images/heat20220621-1835302.gif)
-
-EICO 460 Oscilloscope chassis hot spots

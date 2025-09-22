@@ -267,6 +267,7 @@ class save:
                 save.streamDir = time.strftime("capture/heat-%Y%m%d-%H%M%S", time.localtime())
                 os.makedirs(save.streamDir)
                 print("Capturing stream...")
+                save.fileNum = 1
 
             if  mlx.ready or cam.ready:     # only if there's something to save...
                 #fileName = "%s/heat%s-%04d.jpg" % (os.path.expanduser('~/Pictures'), fileDate, fileNum)
@@ -304,9 +305,9 @@ def preset(mlx,cam,button):
     if button == 2:
         flags.mode = 1
         print(f"mode: {flags.mode}")
-        mlx.setTheme(3)
-        mlx.incrLoTemp(0)
-        mlx.hiTemp = 35
+        mlx.setTheme(2)
+        mlx.loTemp = 12
+        mlx.hiTemp = 40
         cam.setEdgeColor(2)
 
     if button == 3:
@@ -322,9 +323,8 @@ def preset(mlx,cam,button):
         flags.mode = 1
         print(f"mode: {flags.mode}")
         mlx.setTheme(1)
-        mlx.incrLoTemp(0)
-        mlx.incrLoTemp(-3)
-        mlx.hiTemp = 35
+        mlx.loTemp = 12
+        mlx.hiTemp = 40
         cam.setEdgeColor(0)
 
 
